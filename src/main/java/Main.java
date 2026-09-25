@@ -1,7 +1,18 @@
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.core.JsonValue;
+import com.openai.models.FunctionDefinition;
+import com.openai.models.FunctionParameters;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionTool;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
@@ -11,6 +22,49 @@ public class Main {
         }
 
         String prompt = args[1];
+
+        // tool list
+        List<ChatCompletionTool> tools = new ArrayList<>();
+        // Advertising Function tool ; Read tool
+        // 1- Function Parameters
+
+        String jsonSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "file_path": {
+                      "type": "string",
+                      "description": "The path to the file to read"
+                    }
+                  },
+                  "required": ["file_path"]
+                }
+                """;
+        try {
+            Map<String, Object> schema = mapFields(jsonSchema);
+
+
+        FunctionParameters params = FunctionParameters.builder()
+                .putAllAdditionalProperties(
+                        schema.entrySet().stream()
+                                .collect(Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        e -> JsonValue.from(e.getValue())
+                                ))
+                )
+                .build();
+
+
+        FunctionDefinition ReadFunction = 	FunctionDefinition.builder()
+                .name("Read").description("Read and return the content of a file")
+                .parameters(params)
+                .build();
+
+        // Add tools to the list
+        tools.add(ChatCompletionTool.builder()
+                .type(JsonValue.from("function")).function(ReadFunction)
+                .build()
+        );
 
         String apiKey = System.getenv("OPENROUTER_API_KEY");
         String baseUrl = System.getenv("OPENROUTER_BASE_URL");
@@ -31,6 +85,7 @@ public class Main {
                 ChatCompletionCreateParams.builder()
                         .model("anthropic/claude-haiku-4.5")
                         .addUserMessage(prompt)
+                        .tools(tools)
                         .build()
         );
 
@@ -43,5 +98,17 @@ public class Main {
 
         // TODO: Uncomment the line below to pass the first stage
         System.out.print(response.choices().get(0).message().content().orElse(""));
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map<String , Object> mapFields(String jsonSchema) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        Map<String, Object> schema =
+                mapper.readValue(jsonSchema, new TypeReference<Map<String, Object>>() {});
+        return schema;
     }
 }
