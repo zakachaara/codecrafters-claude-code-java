@@ -12,6 +12,7 @@ import com.openai.models.chat.completions.ChatCompletionTool;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -102,36 +103,41 @@ public class Main {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.err.println("Logs from your program will appear here!");
 
-            if (response.choices().get(0).message()._toolCalls().isMissing()){
-                System.out.print(response.choices().get(0).message().content().orElse(""));
-            }else {
-                // Extract Tool Call Parameters
-                Map<String , JsonValue> toolCall = response.choices().get(0).message()._toolCalls().asObject().get();
-                Map<String , JsonValue> function = toolCall.entrySet().stream().filter(x -> x.getKey().equals("function"))
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                e -> JsonValue.from(e.getValue())
-                        ));
-                String functionName = function.get("name").toString();
-                String functionArgs = function.get("arguments").toString();
-                // Extract the Tool Call Arguments from the json string;
-                Map<String, Object> parsedArgs = mapFields(functionArgs);
-                // Execute the Read Tool Call
-                if (functionName.equals("Read") ){
-                    String filePath = parsedArgs.get("file_path").toString();
-                    Path path = Paths.get(filePath);
-                    BufferedReader br = Files.newBufferedReader(path);
-                    br.lines().forEach(System.out::println);
-                    br.close();
+            var message = response.choices().get(0).message();
+
+            if (message.toolCalls().isEmpty()) {
+
+                System.out.print(message.content().orElse(""));
+
+            } else {
+
+                var toolCall = message.toolCalls().get().get(0);
+
+                    var functionCall = toolCall.function();
+
+                    String functionName = functionCall.name();
+                    String functionArgs = functionCall.arguments();
+
+                    Map<String, Object> parsedArgs = mapFields(functionArgs);
+
+                    if ("Read".equals(functionName)) {
+
+                        String filePath = parsedArgs.get("file_path").toString();
+
+                        Path path = Paths.get(filePath);
+
+                        try (BufferedReader br = Files.newBufferedReader(path)) {
+                            br.lines().forEach(System.out::println);
+                        }
+                    }
                 }
-
-            }
-
-
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
+
+
     }
 
     public static Map<String , Object> mapFields(String jsonSchema) throws Exception {
