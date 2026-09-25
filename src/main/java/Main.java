@@ -7,8 +7,14 @@ import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionTool;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -96,8 +102,32 @@ public class Main {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.err.println("Logs from your program will appear here!");
 
-        // TODO: Uncomment the line below to pass the first stage
-        System.out.print(response.choices().get(0).message().content().orElse(""));
+            if (response.choices().get(0).message()._toolCalls().isMissing()){
+                System.out.print(response.choices().get(0).message().content().orElse(""));
+            }else {
+                // Extract Tool Call Parameters
+                Map<String , JsonValue> toolCall = response.choices().get(0).message()._toolCalls().asObject().get();
+                Map<String , JsonValue> function = toolCall.entrySet().stream().filter(x -> x.getKey().equals("function"))
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                e -> JsonValue.from(e.getValue())
+                        ));
+                String functionName = function.get("name").toString();
+                String functionArgs = function.get("arguments").toString();
+                // Extract the Tool Call Arguments from the json string;
+                Map<String, Object> parsedArgs = mapFields(functionArgs);
+                // Execute the Read Tool Call
+                if (functionName.equals("Read") ){
+                    String filePath = parsedArgs.get("file_path").toString();
+                    Path path = Paths.get(filePath);
+                    BufferedReader br = Files.newBufferedReader(path);
+                    br.lines().forEach(System.out::println);
+                    br.close();
+                }
+
+            }
+
+
 
         } catch (Exception e) {
             throw new RuntimeException(e);
