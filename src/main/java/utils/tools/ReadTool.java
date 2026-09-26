@@ -55,4 +55,5 @@ public class ReadTool extends ChatTool{
         return this.ReadFunction;
     }
 
+
 }

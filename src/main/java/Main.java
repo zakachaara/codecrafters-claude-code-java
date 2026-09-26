@@ -109,8 +109,6 @@ public class Main {
                             try (BufferedReader br = Files.newBufferedReader(path)) {
                                 fileContent = br.lines()
                                         .collect(Collectors.joining(System.lineSeparator()));
-
-
                             }
                             messages.add(ChatCompletionMessageParam.ofTool(
                                     ChatCompletionToolMessageParam.builder()
@@ -128,40 +126,7 @@ public class Main {
                 }
 
             }
-//
-//
-//
-//
-//
-//
-//            var message = response.choices().get(0).message();
-//
-//            if (message.toolCalls().isEmpty()) {
-//
-//                System.out.print(message.content().orElse(""));
-//
-//            } else {
-//
-//                    var toolCall = message.toolCalls().get().get(0);
-//
-//                    var functionCall = toolCall.function();
-//
-//                    String functionName = functionCall.name();
-//                    String functionArgs = functionCall.arguments();
-//
-//                    Map<String, Object> parsedArgs = ChatTool.mapFields(functionArgs);
-//
-//                    if ("Read".equals(functionName)) {
-//
-//                        String filePath = parsedArgs.get("file_path").toString();
-//
-//                        Path path = Paths.get(filePath);
-//
-//                        try (BufferedReader br = Files.newBufferedReader(path)) {
-//                            br.lines().forEach(System.out::println);
-//                        }
-//                    }
-//                }
+
             } catch (IOException ex) {
             throw new RuntimeException(ex);
         } catch (Exception ex) {
