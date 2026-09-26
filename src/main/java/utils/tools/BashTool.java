@@ -54,7 +54,7 @@ public class BashTool extends ChatTool{
     public CommandResult execute(String command) {
         try {
 
-            processBuilder.command(command);
+            processBuilder.command("bash", "-c", command);
             process = processBuilder.start();
             int exitCode = process.waitFor();
             var input = process.getInputStream();
