@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
@@ -62,8 +63,6 @@ public class Main {
             messages.add(messageParam);
 
             // start loop using while : stop iteration after no tool called
-            var numberOfMessages = 1;
-
             ChatCompletion response ;
 
             while(true){
@@ -80,9 +79,7 @@ public class Main {
                     throw new RuntimeException("no choices in response");
                 }
                 // get the last response choice message
-
-                numberOfMessages = response.choices().size();
-                var lastmessage = response.choices().get(numberOfMessages-1).message();
+                var lastmessage = response.choices().get(0).message();
 
                 // Record the Assistant Responce Message
                 messages.add(ChatCompletionMessageParam.ofAssistant(
@@ -108,14 +105,16 @@ public class Main {
                             String filePath = parsedArgs.get("file_path").toString();
 
                             Path path = Paths.get(filePath);
-                            String content = "";
+                            String fileContent ;
                             try (BufferedReader br = Files.newBufferedReader(path)) {
-                                br.lines().forEach(line -> content.concat(line));
+                                fileContent = br.lines()
+                                        .collect(Collectors.joining(System.lineSeparator()));
+
 
                             }
                             messages.add(ChatCompletionMessageParam.ofTool(
                                     ChatCompletionToolMessageParam.builder()
-                                            .content(content)
+                                            .content(fileContent)
                                             .toolCallId(toolCallID)
                                             .build()
                             ));
