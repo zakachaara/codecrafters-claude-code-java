@@ -5,8 +5,10 @@ import com.openai.models.FunctionDefinition;
 import com.openai.models.chat.completions.*;
 import utils.tools.ChatTool;
 import utils.tools.ReadTool;
+import utils.tools.WriteTool;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,28 +33,36 @@ public class Main {
 
         try{
             FunctionDefinition ReadFunction = new ReadTool().getReadFunction();
+            FunctionDefinition WriteFunction = new WriteTool().getWriteFunction();
 
-        // Add tools to the list
-        tools.add(ChatCompletionTool.builder()
+            // Add tools to the list
+            // ==1== Read Tool
+            tools.add(ChatCompletionTool.builder()
                 .type(JsonValue.from("function")).function(ReadFunction)
                 .build()
-        );
+            );
+            // ==2== Write Tool
+            tools.add(ChatCompletionTool.builder()
+                    .type(JsonValue.from("function")).function(WriteFunction)
+                    .build()
+            );
 
-        String apiKey = System.getenv("OPENROUTER_API_KEY");
-        String baseUrl = System.getenv("OPENROUTER_BASE_URL");
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            baseUrl = "https://openrouter.ai/api/v1";
-        }
 
-        if (apiKey == null || apiKey.isEmpty()) {
-            throw new RuntimeException("OPENROUTER_API_KEY is not set");
-        }
+            String apiKey = System.getenv("OPENROUTER_API_KEY");
+            String baseUrl = System.getenv("OPENROUTER_BASE_URL");
+            if (baseUrl == null || baseUrl.isEmpty()) {
+                baseUrl = "https://openrouter.ai/api/v1";
+            }
 
-        OpenAIClient client = OpenAIOkHttpClient.builder()
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new RuntimeException("OPENROUTER_API_KEY is not set");
+            }
+
+            OpenAIClient client = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .build();
-        // Store Messages :
+            // Store Messages :
             List<ChatCompletionMessageParam> messages = new ArrayList<>();
 
             // -- First message : User Prompt
@@ -116,6 +126,29 @@ public class Main {
                                             .toolCallId(toolCallID)
                                             .build()
                             ));
+
+                        } else if ("Write".equals(functionName)) {
+                            String filePath = parsedArgs.get("file_path").toString();
+                            String fileContent = parsedArgs.get("content").toString();
+
+                            try{
+                                Path path = Paths.get(filePath);
+                                // create the file if it does not exist
+                                BufferedWriter bw = Files.newBufferedWriter(path);
+                                bw.write(fileContent);
+                                bw.close();
+
+                                // Append the result to messages :
+                                messages.add(ChatCompletionMessageParam.ofTool(
+                                        ChatCompletionToolMessageParam.builder()
+                                                .content(fileContent)
+                                                .toolCallId(toolCallID)
+                                                .build()
+                                ));
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
 
                         }
                     }
