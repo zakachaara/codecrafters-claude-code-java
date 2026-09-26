@@ -1,17 +1,12 @@
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.JsonValue;
 import com.openai.models.FunctionDefinition;
-import com.openai.models.FunctionParameters;
-import com.openai.models.chat.completions.ChatCompletion;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
-import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
-import com.openai.models.chat.completions.ChatCompletionTool;
+import com.openai.models.chat.completions.*;
+import utils.tools.ChatTool;
+import utils.tools.ReadTool;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +14,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) {
@@ -32,40 +26,10 @@ public class Main {
 
         // tool list
         List<ChatCompletionTool> tools = new ArrayList<>();
-        // Advertising Function tool ; Read tool
-        // 1- Function Parameters
-
-        String jsonSchema = """
-                {
-                  "type": "object",
-                  "properties": {
-                    "file_path": {
-                      "type": "string",
-                      "description": "The path to the file to read"
-                    }
-                  },
-                  "required": ["file_path"]
-                }
-                """;
-        try {
-            Map<String, Object> schema = mapFields(jsonSchema);
 
 
-        FunctionParameters params = FunctionParameters.builder()
-                .putAllAdditionalProperties(
-                        schema.entrySet().stream()
-                                .collect(Collectors.toMap(
-                                        Map.Entry::getKey,
-                                        e -> JsonValue.from(e.getValue())
-                                ))
-                )
-                .build();
-
-
-        FunctionDefinition ReadFunction = 	FunctionDefinition.builder()
-                .name("Read").description("Read and return the content of a file")
-                .parameters(params)
-                .build();
+        try{
+            FunctionDefinition ReadFunction = new ReadTool().getReadFunction();
 
         // Add tools to the list
         tools.add(ChatCompletionTool.builder()
@@ -87,50 +51,118 @@ public class Main {
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .build();
+        // Store Messages :
+            List<ChatCompletionMessageParam> messages = new ArrayList<>();
 
-        ChatCompletion response = client.chat().completions().create(
-                ChatCompletionCreateParams.builder()
-                        .model("anthropic/claude-haiku-4.5")
-                        .addUserMessage(prompt)
-                        .tools(tools)
-                        .build()
-        );
+            // -- First message : User Prompt
+            ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
+                    ChatCompletionUserMessageParam.builder()
+                            .content(prompt).build());
 
-        if (response.choices().isEmpty()) {
-            throw new RuntimeException("no choices in response");
-        }
+            messages.add(messageParam);
 
-        // You can use print statements as follows for debugging, they'll be visible when running tests.
-        System.err.println("Logs from your program will appear here!");
+            // start loop using while : stop iteration after no tool called
+            var numberOfMessages = 1;
 
-            var message = response.choices().get(0).message();
+            ChatCompletion response ;
 
-            if (message.toolCalls().isEmpty()) {
+            while(true){
+                // call api on messages
+                response = client.chat().completions().create(
+                        ChatCompletionCreateParams.builder()
+                                .model("anthropic/claude-haiku-4.5")
+                                .messages(messages)
+                                .tools(tools)
+                                .build()
+                );
 
-                System.out.print(message.content().orElse(""));
+                if (response.choices().isEmpty()) {
+                    throw new RuntimeException("no choices in response");
+                }
+                // get the last response choice message
 
-            } else {
+                numberOfMessages = response.choices().size();
+                var lastmessage = response.choices().get(numberOfMessages-1).message();
 
-                var toolCall = message.toolCalls().get().get(0);
+                // Record the Assistant Responce Message
+                messages.add(ChatCompletionMessageParam.ofAssistant(
+                        ChatCompletionAssistantMessageParam.builder()
+                                .content(lastmessage.content().get())
+                                .toolCalls(lastmessage._toolCalls())
+                                .build()
+                ));
 
-                    var functionCall = toolCall.function();
+                // Executing Tool Calls : Looping over tool calls
+                if (!lastmessage.toolCalls().isEmpty()) {
+                    for (var toolCall : lastmessage.toolCalls().get()){
 
-                    String functionName = functionCall.name();
-                    String functionArgs = functionCall.arguments();
+                        var functionCall = toolCall.function();
 
-                    Map<String, Object> parsedArgs = mapFields(functionArgs);
+                        String functionName = functionCall.name();
+                        String functionArgs = functionCall.arguments();
+                        String toolCallID = toolCall.id();
+                        Map<String, Object> parsedArgs = ChatTool.mapFields(functionArgs);
 
-                    if ("Read".equals(functionName)) {
+                        if ("Read".equals(functionName)) {
 
-                        String filePath = parsedArgs.get("file_path").toString();
+                            String filePath = parsedArgs.get("file_path").toString();
 
-                        Path path = Paths.get(filePath);
+                            Path path = Paths.get(filePath);
+                            String content = "";
+                            try (BufferedReader br = Files.newBufferedReader(path)) {
+                                br.lines().forEach(line -> content.concat(line));
 
-                        try (BufferedReader br = Files.newBufferedReader(path)) {
-                            br.lines().forEach(System.out::println);
+                            }
+                            messages.add(ChatCompletionMessageParam.ofTool(
+                                    ChatCompletionToolMessageParam.builder()
+                                            .content(content)
+                                            .toolCallId(toolCallID)
+                                            .build()
+                            ));
+
                         }
                     }
+                }else {
+                    // Print out the last message response
+                    System.out.print(lastmessage.content().orElse(""));
+                    break; // No more work to do
                 }
+
+            }
+//
+//
+//
+//
+//
+//
+//            var message = response.choices().get(0).message();
+//
+//            if (message.toolCalls().isEmpty()) {
+//
+//                System.out.print(message.content().orElse(""));
+//
+//            } else {
+//
+//                    var toolCall = message.toolCalls().get().get(0);
+//
+//                    var functionCall = toolCall.function();
+//
+//                    String functionName = functionCall.name();
+//                    String functionArgs = functionCall.arguments();
+//
+//                    Map<String, Object> parsedArgs = ChatTool.mapFields(functionArgs);
+//
+//                    if ("Read".equals(functionName)) {
+//
+//                        String filePath = parsedArgs.get("file_path").toString();
+//
+//                        Path path = Paths.get(filePath);
+//
+//                        try (BufferedReader br = Files.newBufferedReader(path)) {
+//                            br.lines().forEach(System.out::println);
+//                        }
+//                    }
+//                }
             } catch (IOException ex) {
             throw new RuntimeException(ex);
         } catch (Exception ex) {
@@ -138,13 +170,5 @@ public class Main {
         }
 
 
-    }
-
-    public static Map<String , Object> mapFields(String jsonSchema) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-
-        Map<String, Object> schema =
-                mapper.readValue(jsonSchema, new TypeReference<Map<String, Object>>() {});
-        return schema;
     }
 }
