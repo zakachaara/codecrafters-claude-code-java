@@ -87,7 +87,7 @@ public class Main {
                 // Record the Assistant Responce Message
                 messages.add(ChatCompletionMessageParam.ofAssistant(
                         ChatCompletionAssistantMessageParam.builder()
-                                .content(lastmessage.content().get())
+                                .content(lastmessage.content().orElse(""))
                                 .toolCalls(lastmessage._toolCalls())
                                 .build()
                 ));
