@@ -3,6 +3,8 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.core.JsonValue;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.chat.completions.*;
+import utils.Response.CommandResult;
+import utils.tools.BashTool;
 import utils.tools.ChatTool;
 import utils.tools.ReadTool;
 import utils.tools.WriteTool;
@@ -34,6 +36,7 @@ public class Main {
         try{
             FunctionDefinition ReadFunction = new ReadTool().getReadFunction();
             FunctionDefinition WriteFunction = new WriteTool().getWriteFunction();
+            FunctionDefinition BashFunction = new BashTool().getBashFunction();
 
             // Add tools to the list
             // ==1== Read Tool
@@ -44,6 +47,11 @@ public class Main {
             // ==2== Write Tool
             tools.add(ChatCompletionTool.builder()
                     .type(JsonValue.from("function")).function(WriteFunction)
+                    .build()
+            );
+            // ==3== Bash Tool
+            tools.add(ChatCompletionTool.builder()
+                    .type(JsonValue.from("function")).function(BashFunction)
                     .build()
             );
 
@@ -147,6 +155,29 @@ public class Main {
                                 ));
 
                             } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                        } else if ("Bash".equals(functionName)) {
+                            String command = parsedArgs.get("command").toString();
+                            String executionResult = null;
+                            try {
+
+                                CommandResult res = new BashTool().execute(command);
+                                if (res.getCode() == 0){
+                                    executionResult = res.getMessage();
+                                }else{
+                                    executionResult = res.getError();
+                                }
+                                // Append the result to messages :
+                                messages.add(ChatCompletionMessageParam.ofTool(
+                                        ChatCompletionToolMessageParam.builder()
+                                                .content(executionResult)
+                                                .toolCallId(toolCallID)
+                                                .build()
+                                ));
+
+                            }catch (Exception e){
                                 e.printStackTrace();
                             }
 
