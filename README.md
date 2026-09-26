@@ -14,17 +14,24 @@ calling, agent loop, and how to integrate multiple tools into an AI assistant.
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
-# Passing the first stage
+# Key Notes
 
-The entry point for your `claude-code` implementation is in
-`src/main/java/Main.java`. Study and uncomment the relevant code, and submit to
-pass the first stage:
+1. The Solution uses OpenRouter's LLM and OpenAi java SDK
+2. First, we build the Read Capability via ChatCompletionTool builder.
+3. Second, we test this Read Tool if requested in `toolCalls`
+4. Third, we build an `Agent Loop`, to keep the agent working until no tool is called
+5. Forth, we add the write capability to write and create files
+6. Fifth, we add the bash tool to run commands using bash.
+7. the Tests are performed by CodeCrafters tester
 
-```sh
-codecrafters submit
-```
+# What i have learned :
 
-# Stage 2 & beyond
+1. How we can build a chat completion and persist messages using openai's sdk.
+2. How to parse json schema to jsonField compatible with the sdk in-use.
+3. Refresh memory on how we read files' content using `BufferedReader`, write files using `BufferedWriter , Files.newBufferedWriter()`
+4. Learn how to execute bash command form a Java program using `processBuilder.command("bash" , "-c", command)`, and how to get the message error or/and the output of the command using `process.getInputStream , process.getErrorStream` , and how to constracte a string from a stream.
+
+# CodeCrafters Challenge setup
 
 Note: This section is for stages 2 and beyond.
 
