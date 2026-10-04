@@ -4,6 +4,7 @@ import utils.tools.SkillFormat;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,50 +49,56 @@ public class Skills {
     }
 
 
-    private List<SkillFormat> readSkills(List<String> paths){
+    private List<SkillFormat> readSkills(List<String> paths) {
+        List<SkillFormat> skills = new ArrayList<>();
 
-        try {
-            ArrayList<SkillFormat> skills = new ArrayList<>();
+        for (String filePath : paths) {
+            Path path = Paths.get(filePath);
+            SkillFormat skill = new SkillFormat();
 
-            for (String filePath : paths) {
-                Path path = Paths.get(filePath);
-                SkillFormat skill = new SkillFormat();
-                try (BufferedReader br = Files.newBufferedReader(path)) {
-                    int countOfMarker = 0;
-                    String line;
-                    // Build the body ;
-                    StringBuilder body = new StringBuilder();
-
-                    while ((line = br.readLine()) != null) {
-                        if (line.startsWith("---")) {
-                            countOfMarker++;
-                            continue;
-                        }
+            try (BufferedReader br = Files.newBufferedReader(path)) {
+                int markerCount = 0;
+                String line;
+                StringBuilder body = new StringBuilder();
+                while ((line = br.readLine()) != null) {
+                    // Frontmatter markers
+                    if (line.startsWith("---")) {
+                        markerCount++;
+                        continue;
+                    }
+                    // We are inside the frontmatter
+                    if (markerCount < 2) {
                         if (line.startsWith("name:")) {
-                            skill.setName(line.substring("name:".length()).trim());
-                            continue;
+                            skill.setName(
+                                    line.substring("name:".length()).trim()
+                            );
                         }
-                        if (line.startsWith("description:")) {
+                        else if (line.startsWith("description:")) {
                             skill.setDescription(
                                     line.substring("description:".length()).trim()
                             );
                         }
-                        else {
-                            body.append(line);
-                        }
+                        continue;
                     }
-                    skill.setBody(body.toString());
-                    // add the skill to the list of skills
-                    skills.add(skill);
-                    // use the map to store each skill with its body
-                    skill_prompt.put(skill.getName(), skill.getBody());
+                    // We are now inside the actual skill body
+                    body.append(line).append("\n");
                 }
+                skill.setBody(body.toString());
+                skills.add(skill);
+                skill_prompt.put(
+                        "/"+skill.getName(),
+                        skill.getBody()
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to read skill: " + filePath, e
+                );
             }
-            return skills;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
+
+        return skills;
     }
+
 
     private String buildPrompt(){
         StringBuilder prompt = new StringBuilder(
