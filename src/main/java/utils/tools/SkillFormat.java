@@ -3,6 +3,7 @@ package utils.tools;
 public class SkillFormat {
     private String name;
     private String description;
+    private String body;
     public SkillFormat() {
 //        this.name = name;
 //        this.description = description;
@@ -22,6 +23,13 @@ public class SkillFormat {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
+    }
+    public String getBody() {
+        return body;
     }
 
     @Override

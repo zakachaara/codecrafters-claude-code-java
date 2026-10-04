@@ -8,11 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Skills {
     List<SkillFormat> skill_list = new ArrayList<>();
     String prompt;
+    Map<String , String> skill_prompt = new HashMap<>();
+
     public Skills() {
         // load .claude/skills and determine skill paths
         Path skillsPath = Path.of(".claude", "skills");
@@ -55,12 +59,12 @@ public class Skills {
                 try (BufferedReader br = Files.newBufferedReader(path)) {
                     int countOfMarker = 0;
                     String line;
+                    // Build the body ;
+                    StringBuilder body = new StringBuilder();
+
                     while ((line = br.readLine()) != null) {
                         if (line.startsWith("---")) {
                             countOfMarker++;
-                            if (countOfMarker == 2) {
-                                break;
-                            }
                             continue;
                         }
                         if (line.startsWith("name:")) {
@@ -72,8 +76,15 @@ public class Skills {
                                     line.substring("description:".length()).trim()
                             );
                         }
+                        else {
+                            body.append(line);
+                        }
                     }
+                    skill.setBody(body.toString());
+                    // add the skill to the list of skills
                     skills.add(skill);
+                    // use the map to store each skill with its body
+                    skill_prompt.put(skill.getName(), skill.getBody());
                 }
             }
             return skills;
@@ -96,5 +107,8 @@ public class Skills {
 
     public String getPrompt() {
         return prompt;
+    }
+    public String getSkillPrompt(String command){
+        return skill_prompt.get(command);
     }
 }

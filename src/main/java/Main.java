@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -84,9 +85,26 @@ public class Main {
             messages.add(skillParam);
 
             // -- First message : User Prompt
+            // look for skills and change them with the right prompt;
+
+            String newPrompt = prompt;
+
+            String[] cmds = Arrays.stream(prompt.split("\\s+"))
+                    .filter(word -> word.startsWith("/"))
+                    .toArray(String[]::new);
+
+            for (String cmd : cmds) {
+                String skillPrompt = skills.getSkillPrompt(cmd);
+
+                if (skillPrompt != null) {
+                    newPrompt = newPrompt.replace(cmd, skillPrompt);
+                }
+            }
+
+            // put the new prompt in .
             ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
                     ChatCompletionUserMessageParam.builder()
-                            .content(prompt).build());
+                            .content(newPrompt).build());
 
             messages.add(messageParam);
 
@@ -209,4 +227,6 @@ public class Main {
 
 
     }
+
+
 }
