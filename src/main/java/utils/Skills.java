@@ -99,7 +99,6 @@ public class Skills {
         return skills;
     }
 
-
     private String buildPrompt(){
         StringBuilder prompt = new StringBuilder(
                 "You have access to the following skills:\n\n"
@@ -116,6 +115,7 @@ public class Skills {
         return prompt;
     }
     public String getSkillPrompt(String command){
+        // get the prompt of the command from the hashmap
         return skill_prompt.get(command);
     }
 }
