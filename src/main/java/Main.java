@@ -4,6 +4,7 @@ import com.openai.core.JsonValue;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.chat.completions.*;
 import utils.Response.CommandResult;
+import utils.Skills;
 import utils.tools.BashTool;
 import utils.tools.ChatTool;
 import utils.tools.ReadTool;
@@ -72,6 +73,15 @@ public class Main {
                 .build();
             // Store Messages :
             List<ChatCompletionMessageParam> messages = new ArrayList<>();
+
+            // Advice Skills :
+            Skills skills = new Skills();
+
+            ChatCompletionMessageParam skillParam = ChatCompletionMessageParam.ofSystem(
+                    ChatCompletionSystemMessageParam.builder()
+                            .content(skills.getPrompt()).build());
+
+            messages.add(skillParam);
 
             // -- First message : User Prompt
             ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
