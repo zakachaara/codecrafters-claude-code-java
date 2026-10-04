@@ -3,6 +3,7 @@ package utils;
 import utils.tools.SkillFormat;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,7 +15,8 @@ public class Skills {
     String prompt;
     public Skills() {
         // load .claude/skills and determine skill paths
-        ArrayList<String> skillsPaths = loadSkillsPathFromFolder(Path.of(".claude/skills"));
+        Path skillsPath = Path.of(".claude", "skills");
+        List<String> skillsPaths = loadSkillsPathFromFolder(skillsPath);
 
         // loop over all the paths in it and read every Skill.md metadata
         this.skill_list = readSkills(skillsPaths);
@@ -22,26 +24,27 @@ public class Skills {
         this.prompt = buildPrompt();
     }
 
-    public List<SkillFormat> getSkill_list() {
-        return skill_list;
-    }
+    private List<String> loadSkillsPathFromFolder(Path path) {
+        ArrayList<String> skillsPathList = new ArrayList<>();
 
-    private ArrayList<String> loadSkillsPathFromFolder(Path path){
-        String[] files = path.toFile().list();
+        File[] files = path.toFile().listFiles();
 
-        ArrayList<String> SkillsPath_list = new ArrayList<>();
+        if (files == null) {
+            return skillsPathList;
+        }
 
-        for (String file : files) {
-            // check if it is a folder
-            if(Path.of(file).toFile().isDirectory()){
-                file.concat("/SKILL.md");
-                SkillsPath_list.add(file);
+        for (File file : files) {
+            if (file.isDirectory()) {
+                Path skillPath = file.toPath().resolve("SKILL.md");
+                skillsPathList.add(skillPath.toString());
             }
         }
-        return SkillsPath_list;
+
+        return skillsPathList;
     }
 
-    private ArrayList<SkillFormat> readSkills(ArrayList<String> paths){
+
+    private List<SkillFormat> readSkills(List<String> paths){
 
         try {
             ArrayList<SkillFormat> skills = new ArrayList<>();
@@ -50,21 +53,24 @@ public class Skills {
                 Path path = Paths.get(filePath);
                 SkillFormat skill = new SkillFormat();
                 try (BufferedReader br = Files.newBufferedReader(path)) {
-                    int count_of_marker = 0 ;
-
-                    for(String line : br.readLine().split("\n")){
-                        if (line.startsWith("---")){
-                            count_of_marker++;
+                    int countOfMarker = 0;
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        if (line.startsWith("---")) {
+                            countOfMarker++;
+                            if (countOfMarker == 2) {
+                                break;
+                            }
                             continue;
                         }
-                        if (count_of_marker == 2) break;
-                        if (line.startsWith("name")){
-                            // get the name from line and add it to the skill
-                            skill.setName(line.replace("name: ", ""));
+                        if (line.startsWith("name:")) {
+                            skill.setName(line.substring("name:".length()).trim());
                             continue;
                         }
-                        if (line.startsWith("description")){
-                            skill.setDescription(line.replace("description: ", ""));
+                        if (line.startsWith("description:")) {
+                            skill.setDescription(
+                                    line.substring("description:".length()).trim()
+                            );
                         }
                     }
                     skills.add(skill);
@@ -77,11 +83,15 @@ public class Skills {
     }
 
     private String buildPrompt(){
-        String starter = "You have access to the following skills:\n\n";
+        StringBuilder prompt = new StringBuilder(
+                "You have access to the following skills:\n\n"
+        );
+
         for (SkillFormat skill : skill_list) {
-            starter = starter + skill.toString() + "\n";
+            prompt.append(skill).append("\n");
         }
-        return starter;
+
+        return prompt.toString();
     }
 
     public String getPrompt() {
