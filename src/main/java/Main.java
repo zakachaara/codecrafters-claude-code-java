@@ -86,20 +86,7 @@ public class Main {
 
             // -- First message : User Prompt
             // look for skills and change them with the right prompt;
-
-            String newPrompt = prompt;
-
-            String[] cmds = Arrays.stream(prompt.split("\\s+"))
-                    .filter(word -> word.startsWith("/"))
-                    .toArray(String[]::new);
-
-            for (String cmd : cmds) {
-                String skillPrompt = skills.getSkillPrompt(cmd);
-
-                if (skillPrompt != null) {
-                    newPrompt = newPrompt.replace(cmd, skillPrompt);
-                }
-            }
+            String newPrompt = skills.subsituteInPrompt(prompt);
 
             // put the new prompt in .
             ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(

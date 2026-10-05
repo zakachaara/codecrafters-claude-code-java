@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Skills {
     List<SkillFormat> skill_list = new ArrayList<>();
@@ -117,5 +114,28 @@ public class Skills {
     public String getSkillPrompt(String command){
         // get the prompt of the command from the hashmap
         return skill_prompt.get(command);
+    }
+    public String subsituteInPrompt(String oldPrompt){
+        String newPrompt = oldPrompt;
+        // look for commands ;
+        String[] cmds = Arrays.stream(oldPrompt.split("\\s+"))
+                .filter(word -> word.startsWith("/"))
+                .toArray(String[]::new);
+
+        for (String cmd : cmds) {
+            String skillPrompt = this.getSkillPrompt(cmd);
+
+            if (skillPrompt != null) {
+                // check for Arguments
+                Argument arg = new Argument(cmd , skillPrompt , oldPrompt);
+
+                // substitue allArgs ;
+                newPrompt = arg.substituteArgs(skillPrompt);
+
+                // replace cmd with the new body
+                newPrompt = newPrompt.replace(cmd, skillPrompt);
+            }
+        }
+        return newPrompt;
     }
 }
