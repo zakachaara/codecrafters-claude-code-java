@@ -137,7 +137,7 @@ public class Skills {
             }
         }
         this.newArgs = Arrays.copyOfRange(stack, indexArgs, stack.length);
-        System.out.println("Arguments extracted "+newArgs.toString());
+        Arrays.stream(newArgs).forEach(System.out::println);
         this.stacked = stacked;
     }
 
