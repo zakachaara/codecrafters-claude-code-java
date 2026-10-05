@@ -23,8 +23,13 @@ public class Argument {
         this.longArgs = Arrays.stream(argsPlaceholder).filter(arg -> arg.length() > 10).toArray(String[]::new);
         this.allArgs = Arrays.stream(argsPlaceholder).filter(arg -> arg.equals("$ARGUMENTS")).toArray(String[]::new);
 
-        this.argsWord = Arrays.stream(prompt.substring(cmd.length()).split("\\s+"))
-                .toArray(String[]::new);
+        if (prompt.equals(cmd)){
+            this.argsWord = Arrays.stream(prompt.substring(cmd.length()).split("\\s+"))
+                    .toArray(String[]::new);
+        }else {
+            this.argsWord = Arrays.stream(prompt.substring(cmd.length() + 1).split("\\s+"))
+                    .toArray(String[]::new);
+        }
     }
 
     public String substituteArgs(String prompt){
