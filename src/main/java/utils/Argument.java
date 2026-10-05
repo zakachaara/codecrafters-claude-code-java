@@ -28,47 +28,31 @@ public class Argument {
 
     public String substituteArgs(String prompt) {
         String newPrompt = prompt;
-        // $ARGUMENTS[n]
-        System.out.println("this is the original prompt in substituteArgs "+prompt);
-        if (longArgs.length > 0) {
-            for (String arg : longArgs) {
-                int start = arg.indexOf('[') + 1;
-                int end = arg.indexOf(']');
-                int argIndex = Integer.parseInt(
-                        arg.substring(start, end)
-                );
-                String substitutor =
-                        argIndex < argsWord.length
-                                ? argsWord[argIndex]
-                                : "";
-                newPrompt = newPrompt.replace(arg, substitutor);
-            }
-        }
+        String arguments = String.join(" ", argsWord);
         // $ARGUMENTS
-        if (allArgs.length > 0) {
-            String arguments = String.join(" ", argsWord);
+        newPrompt = newPrompt.replace(
+                "$ARGUMENTS",
+                arguments
+        );
+
+        // $ARGUMENTS[n]
+        for (int i = 0; i < argsWord.length; i++) {
             newPrompt = newPrompt.replace(
-                    "$ARGUMENTS",
-                    arguments
+                    "$ARGUMENTS[" + i + "]",
+                    argsWord[i]
             );
         }
-        // $0, $1, etc.
-        if (shortArgs.length > 0) {
-            for (String arg : shortArgs) {
-                int argIndex = Integer.parseInt(arg.substring(1));
-                String substitutor =
-                        argIndex < argsWord.length
-                                ? argsWord[argIndex]
-                                : "";
-                newPrompt = newPrompt.replace(
-                        arg,
-                        substitutor
-                );
-            }
+
+        // $0, $1, $2, ...
+        for (int i = 0; i < argsWord.length; i++) {
+            newPrompt = newPrompt.replace(
+                    "$" + i,
+                    argsWord[i]
+            );
         }
-        System.out.println("this is the new prompt after substituteArgs "+newPrompt);
         return newPrompt;
     }
+
 
 
 
