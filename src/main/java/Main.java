@@ -87,6 +87,14 @@ public class Main {
             // -- First message : User Prompt
             // look for skills and change them with the right prompt;
             List<String> stackedSkills = skills.getStackedSkills(prompt) ;
+            if (stackedSkills.isEmpty()) {
+                // put the original prompt in .
+                ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
+                        ChatCompletionUserMessageParam.builder()
+                                .content(prompt).build());
+
+                messages.add(messageParam);
+            }
 
             for(String skill : stackedSkills) {
                 String newPrompt = skills.subsituteInPrompt(prompt , skill);
