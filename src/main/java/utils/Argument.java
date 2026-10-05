@@ -48,8 +48,10 @@ public class Argument {
 
         // substitue allArgs , $ARGUMENTS only;
         if (allArgs.length > 0) {
-            newPrompt = newPrompt.replace(allArgs[0] , this.oldPrompt.substring(cmd.length()+1));
+            String arguments = String.join(" ", argsWord);
+            newPrompt = newPrompt.replace("$ARGUMENTS", arguments);
         }
+
 
         // substitute shortArgs , $X;
         if (shortArgs.length > 0) {

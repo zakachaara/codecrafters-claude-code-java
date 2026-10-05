@@ -123,23 +123,23 @@ public class Skills {
     List<String> stacked ;
     String[] newArgs;
 
-    public void extractStackedSkills(String oldPrompt){
-        String[] stack = Arrays.stream(oldPrompt.split("\\s+")).toArray(String[]::new);
+    public void extractStackedSkills(String oldPrompt) {
+        String[] stack = oldPrompt.trim().split("\\s+");
         List<String> stacked = new ArrayList<>();
-        int indexArgs = 0 ;
-        for(int i = 0 ; i < stack.length ; i++){
-            // check first for skill
+        int indexArgs = stack.length;
+        for (int i = 0; i < stack.length; i++) {
             String word = stack[i];
-            if(word.startsWith("/") && this.skillExists(word)){
+            if (word.startsWith("/") && this.skillExists(word)) {
                 stacked.add(word);
-            }else {
-                indexArgs = i ;
+            } else {
+                indexArgs = i;
                 break;
             }
         }
-        this.newArgs = Arrays.stream(stack).skip(indexArgs).toArray(String[]::new);
+        this.newArgs = Arrays.copyOfRange(stack, indexArgs, stack.length);
         this.stacked = stacked;
     }
+
 
     public List<String> getStackedSkills(String oldPrompt) {
         if (stacked == null) {
