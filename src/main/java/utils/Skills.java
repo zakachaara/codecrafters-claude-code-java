@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Skills {
     List<SkillFormat> skill_list = new ArrayList<>();
@@ -115,27 +116,57 @@ public class Skills {
         // get the prompt of the command from the hashmap
         return skill_prompt.get(command);
     }
-    public String subsituteInPrompt(String oldPrompt){
-        String newPrompt = oldPrompt;
-        // look for commands ;
-        String[] cmds = Arrays.stream(oldPrompt.split("\\s+"))
-                .filter(word -> word.startsWith("/"))
-                .toArray(String[]::new);
+    public boolean skillExists(String skill){
+        return skill_prompt.containsKey(skill);
+    }
 
-        for (String cmd : cmds) {
-            String skillPrompt = this.getSkillPrompt(cmd);
+    List<String> stacked ;
+    String[] newArgs;
 
-            if (skillPrompt != null) {
-                // check for Arguments
-                Argument arg = new Argument(cmd , skillPrompt , oldPrompt);
-
-                // substitue allArgs ;
-                newPrompt = arg.substituteArgs(skillPrompt);
-
-                // replace cmd with the new body
-                newPrompt = newPrompt.replace(cmd, skillPrompt);
+    public void extractStackedSkills(String oldPrompt){
+        String[] stack = Arrays.stream(oldPrompt.split("\\s+")).toArray(String[]::new);
+        List<String> stacked = new ArrayList<>();
+        int indexArgs = 0 ;
+        for(int i = 0 ; i < stack.length ; i++){
+            // check first for skill
+            String word = stack[i];
+            if(word.startsWith("/") && this.skillExists(word)){
+                stacked.add(word);
+            }else {
+                indexArgs = i ;
+                break;
             }
         }
+        this.newArgs = Arrays.stream(stack).skip(indexArgs).toArray(String[]::new);
+        this.stacked = stacked;
+    }
+
+    public List<String> getStackedSkills(String oldPrompt) {
+        if (stacked == null) {
+            this.extractStackedSkills(oldPrompt);
+        }
+        return stacked;
+    }
+
+    public String subsituteInPrompt(String oldPrompt, String cmd){
+        String skillPrompt = this.getSkillPrompt(cmd);
+
+        String newPrompt = cmd;
+
+        if (skillPrompt != null) {
+            // check for Arguments
+            if (newArgs == null){
+                this.extractStackedSkills(oldPrompt);
+            }
+            Argument arg = new Argument(cmd , skillPrompt , oldPrompt , this.newArgs);
+
+            // substitue allArgs ;
+            newPrompt = arg.substituteArgs(skillPrompt);
+
+//            // replace cmd with the new body
+//            newPrompt = newPrompt.replace(cmd, skillPrompt);
+        }
+
         return newPrompt;
     }
 }

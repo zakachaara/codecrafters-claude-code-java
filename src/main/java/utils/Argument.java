@@ -9,10 +9,10 @@ public class Argument {
 
     // Passing the arguments
     String[] argsWord = null;
-    String cmd = null;
-    String oldPrompt = null;
+    final String cmd;
+    final String oldPrompt;
 
-    public Argument(String cmd ,String body , String prompt){
+    public Argument(String cmd ,String body , String prompt , String[] args){
         this.cmd = cmd;
         this.oldPrompt = prompt;
 
@@ -23,13 +23,7 @@ public class Argument {
         this.longArgs = Arrays.stream(argsPlaceholder).filter(arg -> arg.length() > 10).toArray(String[]::new);
         this.allArgs = Arrays.stream(argsPlaceholder).filter(arg -> arg.equals("$ARGUMENTS")).toArray(String[]::new);
 
-        if (prompt.equals(cmd)){
-            this.argsWord = Arrays.stream(prompt.substring(cmd.length()).split("\\s+"))
-                    .toArray(String[]::new);
-        }else {
-            this.argsWord = Arrays.stream(prompt.substring(cmd.length() + 1).split("\\s+"))
-                    .toArray(String[]::new);
-        }
+        this.argsWord = args;
     }
 
     public String substituteArgs(String prompt){
