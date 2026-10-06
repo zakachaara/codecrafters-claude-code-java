@@ -128,7 +128,7 @@ public class Skills {
                 || skillBody.contains("/assets");
     }
     public boolean isSubAgented(String skill) {
-        String context = skill_map.get("/"+skill).getContext();
+        String context = skill_map.get(skill).getContext();
         return context.equals("fork");
     }
 
