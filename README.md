@@ -14,6 +14,18 @@ calling, agent loop, and how to integrate multiple tools into an AI assistant.
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
+# Extensions to the project :
+## 1. Claude Code Skills :
+1. Advertise skills to an LLM
+2. Invoke a skill by its name :`/skill`
+3. Pass arguments to a skill using placeholders : `$ARGUMENTS , $ARGUMRNTS[i] , $i`
+4. Stack multiple skills at the begging of the prompt : `/skill1 /skill2` , and manage shared arguments.
+5. Add a disclosure level 3 to enable running a scripts bundled with the skill.
+6. Let the model call a skill in the agent loop : add a `skill tool` to the chat completion parameters
+7. Run a skill in a subagent based on the `context:fork` metadata.
+
+--- 
+
 # Key Notes
 
 1. The Solution uses OpenRouter's LLM and OpenAi java SDK
@@ -33,10 +45,4 @@ calling, agent loop, and how to integrate multiple tools into an AI assistant.
 
 # CodeCrafters Challenge setup
 
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `mvn` installed locally.
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main/java/Main.java`.
-3. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
+Try the challenge at codecrafters.io.
