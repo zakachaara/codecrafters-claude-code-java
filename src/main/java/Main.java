@@ -183,7 +183,7 @@ public class Main {
                                 ));
 
                             } catch (IOException e) {
-                                e.printStackTrace();
+
                             }
 
                         } else if ("Bash".equals(functionName)) {
@@ -206,7 +206,7 @@ public class Main {
                                 ));
 
                             }catch (Exception e){
-                                e.printStackTrace();
+
                             }
 
                         }
@@ -220,9 +220,9 @@ public class Main {
             }
 
             } catch (IOException ex) {
-            throw new RuntimeException(ex);
+
         } catch (Exception ex) {
-            throw new RuntimeException(ex);
+
         }
 
 
