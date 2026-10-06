@@ -3,7 +3,7 @@ package utils;
 public class SkillFormat {
     private String name;
     private String description;
-    private String context = null;
+    private String context = "not-set";
     public SkillFormat() {
 //        this.name = name;
 //        this.description = description;
