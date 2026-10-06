@@ -10,11 +10,9 @@ public class Argument {
     // Passing the arguments
     String[] argsWord = null;
     final String cmd;
-    final String oldPrompt;
 
-    public Argument(String cmd ,String body , String prompt , String[] args){
+    public Argument(String cmd ,String body , String[] args){
         this.cmd = cmd;
-        this.oldPrompt = prompt;
 
         String[] argsPlaceholder = Arrays.stream(body.split("\\s+"))
                 .filter(word -> word.startsWith("$"))

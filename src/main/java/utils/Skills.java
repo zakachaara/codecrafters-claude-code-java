@@ -1,7 +1,5 @@
 package utils;
 
-import utils.tools.SkillFormat;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Skills {
     List<SkillFormat> skill_list = new ArrayList<>();
@@ -105,7 +102,7 @@ public class Skills {
         for (SkillFormat skill : skill_list) {
             prompt.append(skill).append("\n");
         }
-
+        prompt.append("If a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns.");
         return prompt.toString();
     }
 
@@ -175,15 +172,28 @@ public class Skills {
             if (newArgs == null){
                 this.extractStackedSkills(oldPrompt);
             }
-            Argument arg = new Argument(cmd , skillPrompt , oldPrompt , this.newArgs);
+            Argument arg = new Argument(cmd , skillPrompt , this.newArgs);
 
             // substitue allArgs ;
             newPrompt = arg.substituteArgs(skillPrompt);
-
-//            // replace cmd with the new body
-//            newPrompt = newPrompt.replace(cmd, skillPrompt);
         }
-
         return newPrompt;
+    }
+
+    public String getSkillToolPrompt(String skillName , String args){
+        String skill = "/"+skillName;
+        if(this.skillExists(skill)){
+            String skillBody = this.getSkillPrompt(skill);
+            if (args == null) {
+                args = "";
+            }
+            String[] arguments = args.split("\\s+");
+            Argument toolArg = new Argument(skill, skillBody , arguments);
+
+            String newBody = toolArg.substituteArgs(skillBody);
+
+            return newBody;
+        }
+        return "This tool does not exist.";
     }
 }

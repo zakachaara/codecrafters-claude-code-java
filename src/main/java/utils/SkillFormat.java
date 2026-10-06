@@ -1,4 +1,4 @@
-package utils.tools;
+package utils;
 
 public class SkillFormat {
     private String name;

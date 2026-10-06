@@ -5,10 +5,7 @@ import com.openai.models.FunctionDefinition;
 import com.openai.models.chat.completions.*;
 import utils.Response.CommandResult;
 import utils.Skills;
-import utils.tools.BashTool;
-import utils.tools.ChatTool;
-import utils.tools.ReadTool;
-import utils.tools.WriteTool;
+import utils.tools.*;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -39,6 +36,7 @@ public class Main {
             FunctionDefinition ReadFunction = new ReadTool().getReadFunction();
             FunctionDefinition WriteFunction = new WriteTool().getWriteFunction();
             FunctionDefinition BashFunction = new BashTool().getBashFunction();
+            FunctionDefinition SkillFunction = new SkillTool().getSkillFunction();
 
             // Add tools to the list
             // ==1== Read Tool
@@ -56,7 +54,11 @@ public class Main {
                     .type(JsonValue.from("function")).function(BashFunction)
                     .build()
             );
-
+            // ==4== Skill Tool
+            tools.add(ChatCompletionTool.builder()
+                    .type(JsonValue.from("function")).function(SkillFunction)
+                    .build()
+            );
 
             String apiKey = System.getenv("OPENROUTER_API_KEY");
             String baseUrl = System.getenv("OPENROUTER_BASE_URL");
@@ -216,6 +218,18 @@ public class Main {
 
                             }
 
+                        }else if ("Skill".equals(functionName)) {
+                            String skillName = parsedArgs.get("name").toString();
+                            String skillArgs = parsedArgs.containsKey("args") ? parsedArgs.get("args").toString() : "";
+
+                            String skillBody = skills.getSkillToolPrompt(skillName, skillArgs);
+
+                            messages.add(ChatCompletionMessageParam.ofTool(
+                                    ChatCompletionToolMessageParam.builder()
+                                            .content(skillBody)
+                                            .toolCallId(toolCallID)
+                                            .build()
+                            ));
                         }
                     }
                 }else {
