@@ -152,9 +152,13 @@ public class Main {
 
                             Path path = Paths.get(filePath);
                             String fileContent ;
+
                             try (BufferedReader br = Files.newBufferedReader(path)) {
                                 fileContent = br.lines()
                                         .collect(Collectors.joining(System.lineSeparator()));
+                            } catch (IOException e) {
+                                System.err.println("Failed to read: " + path.toAbsolutePath());
+                                throw e;
                             }
                             messages.add(ChatCompletionMessageParam.ofTool(
                                     ChatCompletionToolMessageParam.builder()
@@ -183,7 +187,8 @@ public class Main {
                                 ));
 
                             } catch (IOException e) {
-
+                                System.err.println("Failed to write: " + filePath);
+                                throw e;
                             }
 
                         } else if ("Bash".equals(functionName)) {
@@ -206,6 +211,8 @@ public class Main {
                                 ));
 
                             }catch (Exception e){
+                                System.err.println("Failed to execute: " + command);
+                                throw e;
 
                             }
 
@@ -220,9 +227,11 @@ public class Main {
             }
 
             } catch (IOException ex) {
+            System.err.println("IO Exception: " + ex.getMessage());
 
         } catch (Exception ex) {
-
+            System.err.println("Exception while running the code ");
+            ex.printStackTrace();
         }
 
 

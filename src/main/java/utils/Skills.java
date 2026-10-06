@@ -112,7 +112,7 @@ public class Skills {
     public String getPrompt() {
         return prompt;
     }
-    public String getSkillPrompt(String command){
+    private String getSkillPrompt(String command){
         // get the prompt of the command from the hashmap
         return skill_prompt.get(command);
     }
@@ -120,7 +120,16 @@ public class Skills {
         return skill_prompt.containsKey(skill);
     }
 
+    private boolean requiresLevel3Context(String skill) {
+        String skillBody = getSkillPrompt(skill);
+        return skillBody.contains("/scripts")
+                || skillBody.contains("/references")
+                || skillBody.contains("/assets");
+    }
     public String getSkillHeadPrompt(String skill){
+        if (!requiresLevel3Context(skill)) {
+            return "";
+        }
         StringBuilder prompt = new StringBuilder("Skill: ");
         prompt.append(skill.substring(1)+ " (located at .claude/skills"+skill+")\n");
         prompt.append("Paths in the instructions below are relative to that folder.\n");
