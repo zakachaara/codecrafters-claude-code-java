@@ -120,6 +120,14 @@ public class Skills {
         return skill_prompt.containsKey(skill);
     }
 
+    public String getSkillHeadPrompt(String skill){
+        StringBuilder prompt = new StringBuilder("Skill: ");
+        prompt.append(skill).append(skill.substring(1)+ " (located at .claude/skills"+skill+")\n");
+        prompt.append("Paths in the instructions below are relative to that folder.\n");
+
+        return prompt.toString();
+    }
+
     List<String> stacked ;
     String[] newArgs;
 

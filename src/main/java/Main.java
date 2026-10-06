@@ -97,12 +97,13 @@ public class Main {
             }
 
             for(String skill : stackedSkills) {
+                String newPromptHead = skills.getSkillHeadPrompt(skill);
                 String newPrompt = skills.subsituteInPrompt(prompt , skill);
 
                 // put the new prompt in .
                 ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
                         ChatCompletionUserMessageParam.builder()
-                                .content(newPrompt).build());
+                                .content(newPromptHead+newPrompt).build());
 
                 messages.add(messageParam);
             }
