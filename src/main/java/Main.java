@@ -222,11 +222,16 @@ public class Main {
                             String skillName = parsedArgs.get("name").toString();
                             String skillArgs = parsedArgs.containsKey("args") ? parsedArgs.get("args").toString() : "";
 
-                            String skillBody = skills.getSkillToolPrompt(skillName, skillArgs);
+                            String skillMessage = skills.getSkillToolPrompt(skillName, skillArgs);
+
+                            if(skills.isSubAgented(skillName)){
+                                skillMessage = new Main().callSubAgent(skillMessage);
+                                skillMessage = "Skill "+skillName+" ran in a separate context and returned:" + skillMessage;
+                            }
 
                             messages.add(ChatCompletionMessageParam.ofTool(
                                     ChatCompletionToolMessageParam.builder()
-                                            .content(skillBody)
+                                            .content(skillMessage)
                                             .toolCallId(toolCallID)
                                             .build()
                             ));
@@ -249,6 +254,76 @@ public class Main {
         }
 
 
+    }
+
+    public String callSubAgent(String prompt) {
+        try{
+            String apiKey = System.getenv("OPENROUTER_API_KEY");
+            String baseUrl = System.getenv("OPENROUTER_BASE_URL");
+            if (baseUrl == null || baseUrl.isEmpty()) {
+                baseUrl = "https://openrouter.ai/api/v1";
+            }
+
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new RuntimeException("OPENROUTER_API_KEY is not set");
+            }
+
+            OpenAIClient client = OpenAIOkHttpClient.builder()
+                    .apiKey(apiKey)
+                    .baseUrl(baseUrl)
+                    .build();
+            // Store Messages :
+            List<ChatCompletionMessageParam> messages = new ArrayList<>();
+
+            // -- First message : User Prompt
+            ChatCompletionMessageParam messageParam = ChatCompletionMessageParam.ofUser(
+                    ChatCompletionUserMessageParam.builder()
+                            .content(prompt).build());
+
+            messages.add(messageParam);
+
+            // start loop using while : stop iteration after no tool called
+            ChatCompletion response ;
+
+            while(true){
+                // call api on messages
+                response = client.chat().completions().create(
+                        ChatCompletionCreateParams.builder()
+                                .model("anthropic/claude-haiku-4.5")
+                                .messages(messages)
+                                .build()
+                );
+
+                if (response.choices().isEmpty()) {
+                    throw new RuntimeException("no choices in response");
+                }
+                // get the last response choice message
+                var lastmessage = response.choices().get(0).message();
+
+                // Record the Assistant Responce Message
+                messages.add(ChatCompletionMessageParam.ofAssistant(
+                        ChatCompletionAssistantMessageParam.builder()
+                                .content(lastmessage.content().orElse(""))
+                                .toolCalls(lastmessage._toolCalls())
+                                .build()
+                ));
+
+                // Executing Tool Calls : Looping over tool calls
+                if (!lastmessage.toolCalls().isEmpty()) {
+                    System.out.println("Tool Calls are not supported for sub agents");
+                }else {
+                    // return last message response
+                    return lastmessage.content().orElse("");
+                    // No more work to do
+                }
+
+            }
+        } catch (Exception ex) {
+            System.err.println("Exception while running the code ");
+            ex.printStackTrace();
+        }
+
+        return null;
     }
 
 

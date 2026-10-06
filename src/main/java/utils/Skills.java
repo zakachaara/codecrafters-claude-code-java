@@ -9,9 +9,9 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public class Skills {
-    List<SkillFormat> skill_list = new ArrayList<>();
-    String prompt;
-    Map<String , String> skill_prompt = new HashMap<>();
+    private Map<String , SkillFormat> skill_map = new HashMap<>();
+    private String prompt;
+    private Map<String , String> skill_prompt = new HashMap<>();
 
     public Skills() {
         // load .claude/skills and determine skill paths
@@ -19,7 +19,7 @@ public class Skills {
         List<String> skillsPaths = loadSkillsPathFromFolder(skillsPath);
 
         // loop over all the paths in it and read every Skill.md metadata
-        this.skill_list = readSkills(skillsPaths);
+        this.skill_map = readSkills(skillsPaths);
         // Build the System prompt ;
         this.prompt = buildPrompt();
     }
@@ -44,8 +44,8 @@ public class Skills {
     }
 
 
-    private List<SkillFormat> readSkills(List<String> paths) {
-        List<SkillFormat> skills = new ArrayList<>();
+    private Map<String, SkillFormat> readSkills(List<String> paths) {
+        Map<String, SkillFormat> skill_map = new HashMap<>();
 
         for (String filePath : paths) {
             Path path = Paths.get(filePath);
@@ -72,17 +72,21 @@ public class Skills {
                             skill.setDescription(
                                     line.substring("description:".length()).trim()
                             );
+                        } else if (line.startsWith("context:")) {
+                            skill.setContext(
+                                    line.substring("context:".length()).trim()
+                            );
                         }
                         continue;
                     }
                     // We are now inside the actual skill body
                     body.append(line).append("\n");
                 }
-                skill.setBody(body.toString());
-                skills.add(skill);
+
+                skill_map.put(skill.getName(), skill);
                 skill_prompt.put(
                         "/"+skill.getName(),
-                        skill.getBody()
+                        body.toString()
                 );
             } catch (IOException e) {
                 throw new RuntimeException(
@@ -91,7 +95,7 @@ public class Skills {
             }
         }
 
-        return skills;
+        return skill_map;
     }
 
     private String buildPrompt(){
@@ -99,7 +103,7 @@ public class Skills {
                 "You have access to the following skills:\n\n"
         );
 
-        for (SkillFormat skill : skill_list) {
+        for (SkillFormat skill : skill_map.values()) {
             prompt.append(skill).append("\n");
         }
         prompt.append("If a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns.");
@@ -123,6 +127,11 @@ public class Skills {
                 || skillBody.contains("/references")
                 || skillBody.contains("/assets");
     }
+    public boolean isSubAgented(String skill) {
+        String context = skill_map.get("/"+skill).getContext();
+        return context.equals("fork");
+    }
+
     public String getSkillHeadPrompt(String skill){
         if (!requiresLevel3Context(skill)) {
             return "";
