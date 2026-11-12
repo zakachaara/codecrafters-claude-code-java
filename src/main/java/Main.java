@@ -28,6 +28,16 @@ public class Main {
 
         String prompt = args[1];
 
+        // initialise the LSP Client
+        try{
+            LSPClient lspClient = LSPClient.fromEnvironment();
+            if(lspClient == null){
+                System.err.println("LSPClient is not configured!");
+            }
+        }catch(Exception e){
+            System.err.println("Error: " + e.getMessage());
+        }
+
         // tool list
         List<ChatCompletionTool> tools = new ArrayList<>();
 
