@@ -29,10 +29,10 @@ public class Main {
         String prompt = args[1];
 
         // initialise the LSP Client
-        boolean configured = true;
+        boolean configured = false;
         try{
             LSPClient lspClient = LSPClient.fromEnvironment();
-            if(lspClient == null){
+            if(lspClient != null){
                 configured = true;
                 System.err.println("LSPClient is not configured!");
             }
@@ -170,7 +170,7 @@ public class Main {
                         String toolCallID = toolCall.id();
                         Map<String, Object> parsedArgs = ChatTool.mapFields(functionArgs);
                         switch (functionName) {
-                            case "Read": {
+                            case "Read" -> {
 
                                 String filePath = parsedArgs.get("file_path").toString();
 
@@ -192,7 +192,7 @@ public class Main {
                                 ));
 
                             }
-                            case "Write":{
+                            case "Write" -> {
                                 String filePath = parsedArgs.get("file_path").toString();
                                 String fileContent = parsedArgs.get("content").toString();
 
@@ -217,7 +217,7 @@ public class Main {
                                 }
 
                             }
-                            case "Bash" : {
+                            case "Bash" -> {
                                 String command = parsedArgs.get("command").toString();
                                 String executionResult = null;
                                 try {
@@ -243,7 +243,7 @@ public class Main {
                                 }
 
                             }
-                            case "Skill": {
+                            case "Skill" -> {
                                 String skillName = parsedArgs.get("name").toString();
                                 String skillArgs = parsedArgs.containsKey("args") ? parsedArgs.get("args").toString() : "";
 
@@ -261,9 +261,15 @@ public class Main {
                                                 .build()
                                 ));
                             }
-                            case "LSP" : {
+                            case "LSP" -> {
                                 if (configured) {
-                                    String lspResult = "LSP is not implemented yet";
+                                    String lspResult;
+
+                                    if (configured) {
+                                        lspResult = "LSP is not implemented yet";
+                                    } else {
+                                        lspResult = "LSP client is not configured.";
+                                    }
 
                                     messages.add(ChatCompletionMessageParam.ofTool(
                                             ChatCompletionToolMessageParam.builder()
