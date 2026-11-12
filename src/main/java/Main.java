@@ -169,40 +169,21 @@ public class Main {
                         String functionArgs = functionCall.arguments();
                         String toolCallID = toolCall.id();
                         Map<String, Object> parsedArgs = ChatTool.mapFields(functionArgs);
+                        switch (functionName) {
+                            case "Read": {
 
-                        if ("Read".equals(functionName)) {
+                                String filePath = parsedArgs.get("file_path").toString();
 
-                            String filePath = parsedArgs.get("file_path").toString();
-
-                            Path path = Paths.get(filePath);
-                            String fileContent ;
-
-                            try (BufferedReader br = Files.newBufferedReader(path)) {
-                                fileContent = br.lines()
-                                        .collect(Collectors.joining(System.lineSeparator()));
-                            } catch (IOException e) {
-                                System.err.println("Failed to read: " + path.toAbsolutePath());
-                                throw e;
-                            }
-                            messages.add(ChatCompletionMessageParam.ofTool(
-                                    ChatCompletionToolMessageParam.builder()
-                                            .content(fileContent)
-                                            .toolCallId(toolCallID)
-                                            .build()
-                            ));
-
-                        } else if ("Write".equals(functionName)) {
-                            String filePath = parsedArgs.get("file_path").toString();
-                            String fileContent = parsedArgs.get("content").toString();
-
-                            try{
                                 Path path = Paths.get(filePath);
-                                // create the file if it does not exist
-                                BufferedWriter bw = Files.newBufferedWriter(path);
-                                bw.write(fileContent);
-                                bw.close();
+                                String fileContent ;
 
-                                // Append the result to messages :
+                                try (BufferedReader br = Files.newBufferedReader(path)) {
+                                    fileContent = br.lines()
+                                            .collect(Collectors.joining(System.lineSeparator()));
+                                } catch (IOException e) {
+                                    System.err.println("Failed to read: " + path.toAbsolutePath());
+                                    throw e;
+                                }
                                 messages.add(ChatCompletionMessageParam.ofTool(
                                         ChatCompletionToolMessageParam.builder()
                                                 .content(fileContent)
@@ -210,56 +191,91 @@ public class Main {
                                                 .build()
                                 ));
 
-                            } catch (IOException e) {
-                                System.err.println("Failed to write: " + filePath);
-                                throw e;
                             }
+                            case "Write":{
+                                String filePath = parsedArgs.get("file_path").toString();
+                                String fileContent = parsedArgs.get("content").toString();
 
-                        } else if ("Bash".equals(functionName)) {
-                            String command = parsedArgs.get("command").toString();
-                            String executionResult = null;
-                            try {
+                                try{
+                                    Path path = Paths.get(filePath);
+                                    // create the file if it does not exist
+                                    BufferedWriter bw = Files.newBufferedWriter(path);
+                                    bw.write(fileContent);
+                                    bw.close();
 
-                                CommandResult res = new BashTool().execute(command);
-                                if (res.getCode() == 0){
-                                    executionResult = res.getMessage();
-                                }else{
-                                    executionResult = res.getError();
+                                    // Append the result to messages :
+                                    messages.add(ChatCompletionMessageParam.ofTool(
+                                            ChatCompletionToolMessageParam.builder()
+                                                    .content(fileContent)
+                                                    .toolCallId(toolCallID)
+                                                    .build()
+                                    ));
+
+                                } catch (IOException e) {
+                                    System.err.println("Failed to write: " + filePath);
+                                    throw e;
                                 }
-                                // Append the result to messages :
+
+                            }
+                            case "Bash" : {
+                                String command = parsedArgs.get("command").toString();
+                                String executionResult = null;
+                                try {
+
+                                    CommandResult res = new BashTool().execute(command);
+                                    if (res.getCode() == 0){
+                                        executionResult = res.getMessage();
+                                    }else{
+                                        executionResult = res.getError();
+                                    }
+                                    // Append the result to messages :
+                                    messages.add(ChatCompletionMessageParam.ofTool(
+                                            ChatCompletionToolMessageParam.builder()
+                                                    .content(executionResult)
+                                                    .toolCallId(toolCallID)
+                                                    .build()
+                                    ));
+
+                                }catch (Exception e){
+                                    System.err.println("Failed to execute: " + command);
+                                    throw e;
+
+                                }
+
+                            }
+                            case "Skill": {
+                                String skillName = parsedArgs.get("name").toString();
+                                String skillArgs = parsedArgs.containsKey("args") ? parsedArgs.get("args").toString() : "";
+
+                                String skillMessage = skills.getSkillToolPrompt(skillName, skillArgs);
+
+                                if(skills.isSubAgented(skillName)){
+                                    skillMessage = new Main().callSubAgent(skillMessage);
+                                    skillMessage = "Skill "+skillName+" ran in a separate context and returned:" + skillMessage;
+                                }
+
                                 messages.add(ChatCompletionMessageParam.ofTool(
                                         ChatCompletionToolMessageParam.builder()
-                                                .content(executionResult)
+                                                .content(skillMessage)
                                                 .toolCallId(toolCallID)
                                                 .build()
                                 ));
-
-                            }catch (Exception e){
-                                System.err.println("Failed to execute: " + command);
-                                throw e;
-
                             }
+                            case "LSP" : {
+                                String lspOperation = parsedArgs.get("operation").toString();
+                                String lspResult = "LSP is not implemented yet";
 
-                        }else if ("Skill".equals(functionName)) {
-                            String skillName = parsedArgs.get("name").toString();
-                            String skillArgs = parsedArgs.containsKey("args") ? parsedArgs.get("args").toString() : "";
-
-                            String skillMessage = skills.getSkillToolPrompt(skillName, skillArgs);
-
-                            if(skills.isSubAgented(skillName)){
-                                skillMessage = new Main().callSubAgent(skillMessage);
-                                skillMessage = "Skill "+skillName+" ran in a separate context and returned:" + skillMessage;
+                                messages.add(ChatCompletionMessageParam.ofTool(
+                                        ChatCompletionToolMessageParam.builder()
+                                                .content(lspResult)
+                                                .toolCallId(toolCallID)
+                                                .build()
+                                ));
                             }
-
-                            messages.add(ChatCompletionMessageParam.ofTool(
-                                    ChatCompletionToolMessageParam.builder()
-                                            .content(skillMessage)
-                                            .toolCallId(toolCallID)
-                                            .build()
-                            ));
-                        }
                     }
-                }else {
+                }
+                }
+                else {
                     // Print out the last message response
                     System.out.print(lastmessage.content().orElse(""));
                     break; // No more work to do
