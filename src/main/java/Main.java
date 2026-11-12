@@ -262,15 +262,17 @@ public class Main {
                                 ));
                             }
                             case "LSP" : {
-                                String lspOperation = parsedArgs.get("operation").toString();
-                                String lspResult = "LSP is not implemented yet";
+                                if (configured) {
+                                    String lspOperation = parsedArgs.get("operation").toString();
+                                    String lspResult = "LSP is not implemented yet";
 
-                                messages.add(ChatCompletionMessageParam.ofTool(
-                                        ChatCompletionToolMessageParam.builder()
-                                                .content(lspResult)
-                                                .toolCallId(toolCallID)
-                                                .build()
-                                ));
+                                    messages.add(ChatCompletionMessageParam.ofTool(
+                                            ChatCompletionToolMessageParam.builder()
+                                                    .content(lspResult)
+                                                    .toolCallId(toolCallID)
+                                                    .build()
+                                    ));
+                                }
                             }
                     }
                 }
