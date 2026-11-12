@@ -29,9 +29,11 @@ public class Main {
         String prompt = args[1];
 
         // initialise the LSP Client
+        boolean configured = true;
         try{
             LSPClient lspClient = LSPClient.fromEnvironment();
             if(lspClient == null){
+                configured = true;
                 System.err.println("LSPClient is not configured!");
             }
         }catch(Exception e){
@@ -69,6 +71,16 @@ public class Main {
                     .type(JsonValue.from("function")).function(SkillFunction)
                     .build()
             );
+            // ==5== LSP Tool , if the client is configured
+            if(configured){
+                FunctionDefinition LSPFunction = new LSPTool().getLSPFunction();
+
+                tools.add(ChatCompletionTool.builder()
+                        .type(JsonValue.from("function")).function(LSPFunction)
+                        .build()
+                );
+
+            }
 
             String apiKey = System.getenv("OPENROUTER_API_KEY");
             String baseUrl = System.getenv("OPENROUTER_BASE_URL");
