@@ -13,6 +13,8 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 public final class LSPTool implements Tool {
     private static final String JSON_SCHEMA = """
@@ -21,7 +23,7 @@ public final class LSPTool implements Tool {
               "properties": {
                 "operation": {
                   "type": "string",
-                  "enum": ["goToDefinition"]
+                  "enum": ["goToDefinition" , "findReferences"]
                 },
                 "filePath": {
                   "type": "string",
@@ -53,7 +55,7 @@ public final class LSPTool implements Tool {
         FunctionParameters params = ChatTool.buildFunctionParameters(schema);
         this.definition = FunctionDefinition.builder()
                 .name("LSP")
-                .description("Returns the file, line, and character where a symbol is defined.")
+                .description("Returns the file, line, and character where a symbol is defined or referenced.")
                 .parameters(params)
                 .build();
     }
@@ -75,17 +77,22 @@ public final class LSPTool implements Tool {
         }
 
         String operation = requiredString(arguments, "operation");
-        if (!"goToDefinition".equals(operation)) {
-            throw new IllegalArgumentException("Unknown LSP operation: " + operation);
-        }
-
         Path filePath = Path.of(requiredString(arguments, "filePath"))
                 .toAbsolutePath()
                 .normalize();
         int line = requiredPosition(arguments, "line");
         int character = requiredPosition(arguments, "character");
-
-        return goToDefinition(filePath, line - 1, character - 1);
+        
+        switch (operation) {
+            case "goToDefinition" -> {
+                return goToDefinition(filePath, line - 1, character - 1);
+            }
+            case "findReferences" -> {
+                return findReferences(filePath, line - 1, character - 1);
+            }
+            default -> throw new IllegalArgumentException("Unknown LSP operation: " + operation);
+        }
+        
     }
 
     private synchronized String goToDefinition(
@@ -134,6 +141,63 @@ public final class LSPTool implements Tool {
                 relativePath,
                 start.path("line").asInt() + 1,
                 start.path("character").asInt() + 1);
+    }
+
+    private synchronized String findReferences(
+            Path filePath,
+            int requestLine,
+            int requestCharacter) throws Exception {
+        URI documentUri = filePath.toUri();
+        ensureDocumentOpen(filePath, documentUri);
+
+        ObjectNode request = objectMapper.createObjectNode();
+        request.put("method", "textDocument/references");
+        ObjectNode params = request.putObject("params");
+        params.putObject("textDocument").put("uri", documentUri.toString());
+        ObjectNode position = params.putObject("position");
+        position.put("line", requestLine);
+        position.put("character", requestCharacter);
+        params.put("context", objectMapper.createObjectNode().put("includeDeclaration", true));
+        String response = lspClient.request(objectMapper.writeValueAsString(request));
+        JsonNode results = objectMapper.readTree(response);
+        if (!results.isArray() || results.isEmpty()) {
+            return "No references found.";
+        }
+
+        Map<String, ArrayList<String>> referencesByFile = new LinkedHashMap<>();
+        int referenceCount = 0;
+        for (JsonNode result : results) {
+            String targetUri = result.path("uri").asText(null);
+            JsonNode start = result.path("range").path("start");
+            if (targetUri == null || start.isMissingNode()) {
+                continue;
+            }
+
+            Path targetPath = Path.of(URI.create(targetUri))
+                    .toAbsolutePath()
+                    .normalize();
+            Path workingDirectory = Path.of("").toAbsolutePath().normalize();
+            String relativePath = workingDirectory.relativize(targetPath)
+                    .toString()
+                    .replace('\\', '/');
+            referenceCount++;
+
+            referencesByFile.computeIfAbsent(relativePath, k -> new ArrayList<>()).add(String.format(
+                    "Line %d:%d%n",
+                    start.path("line").asInt() + 1,
+                    start.path("character").asInt() + 1));
+        }
+        // construct a string with all references found, or a message if none were found;
+        StringBuilder str = new StringBuilder();
+        str.append(String.format("Found %d references across %d files:%n", referenceCount, referencesByFile.size()));
+        for (Map.Entry<String, ArrayList<String>> entry : referencesByFile.entrySet()) {
+            str.append(String.format("%s:%n", entry.getKey()));
+            for (String reference : entry.getValue()) {
+                str.append(String.format("  %s", reference));
+            }
+            str.append(System.lineSeparator());
+        }
+        return str.toString();
     }
 
     private void ensureDocumentOpen(Path filePath, URI documentUri) throws Exception {
