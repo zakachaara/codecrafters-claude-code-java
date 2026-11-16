@@ -2,6 +2,7 @@ package utils.tools;
 
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
+import lsp.LspDocumentSynchronizer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +26,10 @@ public final class WriteTool implements Tool {
                  }
                 """;
     private final FunctionDefinition definition;
+    private final LspDocumentSynchronizer documentSynchronizer;
 
-    public WriteTool() {
+    public WriteTool(LspDocumentSynchronizer documentSynchronizer) {
+        this.documentSynchronizer = documentSynchronizer;
         Map<String, Object> schema = ChatTool.mapFields(JSON_SCHEMA);
         FunctionParameters params = ChatTool.buildFunctionParameters(schema);
         this.definition = FunctionDefinition.builder()
@@ -52,7 +55,10 @@ public final class WriteTool implements Tool {
         if (filePath == null || content == null) {
             throw new IllegalArgumentException("file_path and content are required");
         }
-        Files.writeString(Path.of(filePath.toString()), content.toString());
-        return content.toString();
+        Path path = Path.of(filePath.toString());
+        String savedContent = content.toString();
+        Files.writeString(path, savedContent);
+        documentSynchronizer.synchronizeWrite(path, savedContent);
+        return savedContent;
     }
 }

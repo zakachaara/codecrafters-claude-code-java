@@ -12,17 +12,20 @@ import java.util.function.Function;
 import java.util.Optional;
 
 import lsp.LSPClient;
+import lsp.LspDocumentSynchronizer;
 import utils.Skills;
 
 public final class ToolRegistry {
     private final Map<String, Tool> tools = new LinkedHashMap<>();
 
     public ToolRegistry(Skills skills, Function<String, String> subAgentRunner, Optional<LSPClient> lspClient) {
+        LSPClient client = lspClient.orElse(null);
+        LspDocumentSynchronizer documentSynchronizer = new LspDocumentSynchronizer(client);
         register(new ReadTool());
-        register(new WriteTool());
+        register(new WriteTool(documentSynchronizer));
         register(new BashTool());
         register(new SkillTool(skills, subAgentRunner));
-        register(new LSPTool(lspClient.orElse(null)));
+        register(new LSPTool(client, documentSynchronizer));
     }
 
     private void register(Tool tool) {

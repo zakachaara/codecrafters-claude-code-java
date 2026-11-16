@@ -6,13 +6,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 import lsp.LSPClient;
+import lsp.LspDocumentSynchronizer;
 
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
@@ -46,11 +44,12 @@ public final class LSPTool implements Tool {
 
     private final FunctionDefinition definition;
     private final LSPClient lspClient;
+    private final LspDocumentSynchronizer documentSynchronizer;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Set<URI> openedDocuments = new HashSet<>();
 
-    public LSPTool(LSPClient lspClient) {
+    public LSPTool(LSPClient lspClient, LspDocumentSynchronizer documentSynchronizer) {
         this.lspClient = lspClient;
+        this.documentSynchronizer = documentSynchronizer;
         Map<String, Object> schema = ChatTool.mapFields(JSON_SCHEMA);
         FunctionParameters params = ChatTool.buildFunctionParameters(schema);
         this.definition = FunctionDefinition.builder()
@@ -100,7 +99,7 @@ public final class LSPTool implements Tool {
             int requestLine,
             int requestCharacter) throws Exception {
         URI documentUri = filePath.toUri();
-        ensureDocumentOpen(filePath, documentUri);
+        documentSynchronizer.ensureOpen(filePath);
 
         ObjectNode request = objectMapper.createObjectNode();
         request.put("method", "textDocument/definition");
@@ -148,7 +147,7 @@ public final class LSPTool implements Tool {
             int requestLine,
             int requestCharacter) throws Exception {
         URI documentUri = filePath.toUri();
-        ensureDocumentOpen(filePath, documentUri);
+        documentSynchronizer.ensureOpen(filePath);
 
         ObjectNode request = objectMapper.createObjectNode();
         request.put("method", "textDocument/references");
@@ -198,39 +197,6 @@ public final class LSPTool implements Tool {
             str.append(System.lineSeparator());
         }
         return str.toString();
-    }
-
-    private void ensureDocumentOpen(Path filePath, URI documentUri) throws Exception {
-        if (openedDocuments.contains(documentUri)) {
-            return;
-        }
-
-        String extension = extensionOf(filePath);
-        String language = lspClient.mapExtensionToLanguage(extension);
-        if (language == null) {
-            throw new IllegalArgumentException("No LSP language mapping for " + extension);
-        }
-
-        ObjectNode notification = objectMapper.createObjectNode();
-        notification.put("method", "textDocument/didOpen");
-        ObjectNode textDocument = notification.putObject("params")
-                .putObject("textDocument");
-        textDocument.put("uri", documentUri.toString());
-        textDocument.put("languageId", language);
-        textDocument.put("version", 1);
-        textDocument.put("text", Files.readString(filePath));
-
-        lspClient.notify(objectMapper.writeValueAsString(notification));
-        openedDocuments.add(documentUri);
-    }
-
-    private String extensionOf(Path filePath) {
-        String fileName = filePath.getFileName().toString();
-        int dot = fileName.lastIndexOf('.');
-        if (dot < 0) {
-            throw new IllegalArgumentException("File has no extension: " + fileName);
-        }
-        return fileName.substring(dot);
     }
 
     private String requiredString(Map<String, Object> arguments, String name) {
