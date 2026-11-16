@@ -56,7 +56,7 @@ public final class SkillTool implements Tool {
                 : "";
         String skillMessage = skills.getSkillToolPrompt(skillName, skillArgs);
 
-        if (skills.isSubAgented("/" + skillName)) {
+        if (skills.isSubAgented(skillName)) {
             skillMessage = "Skill " + skillName
                     + " ran in a separate context and returned:"
                     + subAgentRunner.apply(skillMessage);
