@@ -34,6 +34,10 @@ public final class LspDiagnosticsTracker {
         }
 
         JsonNode response = objectMapper.readTree(client.notifications(notificationCursor));
+        JsonNode wrappedResult = response.get("result");
+        if (wrappedResult != null && wrappedResult.isObject()) {
+            response = wrappedResult;
+        }
         notificationCursor = response.path("cursor").asInt(notificationCursor);
 
         Map<String, List<DiagnosticLocation>> newDiagnostics = new LinkedHashMap<>();

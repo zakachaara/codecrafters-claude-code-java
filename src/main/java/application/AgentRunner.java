@@ -58,15 +58,11 @@ public final class AgentRunner {
             for (var toolCall : assistantMessage.toolCalls().get()) {
                 var function = toolCall.function();
                 String result = toolRegistry.execute(function.name(), function.arguments());
+                result = appendDiagnostics(result);
                 toolResults.add(new ToolResult(toolCall.id(), result));
             }
 
-            String diagnostics;
-            try {
-                diagnostics = toolRegistry.collectNewDiagnostics();
-            } catch (Exception exception) {
-                throw new IllegalStateException("Unable to collect LSP diagnostics", exception);
-            }
+            String diagnostics = collectDiagnostics();
             if (!diagnostics.isEmpty() && !toolResults.isEmpty()) {
                 int lastIndex = toolResults.size() - 1;
                 ToolResult lastResult = toolResults.get(lastIndex);
@@ -85,6 +81,21 @@ public final class AgentRunner {
         }
 
         throw new IllegalStateException("agent exceeded maximum iterations");
+    }
+
+    private String appendDiagnostics(String result) {
+        String diagnostics = collectDiagnostics();
+        return diagnostics.isEmpty()
+                ? result
+                : result + "\n\n" + diagnostics;
+    }
+
+    private String collectDiagnostics() {
+        try {
+            return toolRegistry.collectNewDiagnostics();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to collect LSP diagnostics", exception);
+        }
     }
 
     private void addUserMessages(List<ChatCompletionMessageParam> messages, String prompt) {
