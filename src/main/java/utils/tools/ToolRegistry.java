@@ -12,15 +12,18 @@ import java.util.function.Function;
 import java.util.Optional;
 
 import lsp.LSPClient;
+import lsp.LspDiagnosticsTracker;
 import lsp.LspDocumentSynchronizer;
 import utils.Skills;
 
 public final class ToolRegistry {
     private final Map<String, Tool> tools = new LinkedHashMap<>();
+    private final LspDiagnosticsTracker diagnosticsTracker;
 
     public ToolRegistry(Skills skills, Function<String, String> subAgentRunner, Optional<LSPClient> lspClient) {
         LSPClient client = lspClient.orElse(null);
         LspDocumentSynchronizer documentSynchronizer = new LspDocumentSynchronizer(client);
+        this.diagnosticsTracker = new LspDiagnosticsTracker(client, documentSynchronizer);
         register(new ReadTool());
         register(new WriteTool(documentSynchronizer));
         register(new BashTool());
@@ -54,5 +57,9 @@ public final class ToolRegistry {
         } catch (Exception exception) {
             return "Tool " + name + " failed: " + exception.getMessage();
         }
+    }
+
+    public String collectNewDiagnostics() throws Exception {
+        return diagnosticsTracker.collectNewDiagnostics();
     }
 }

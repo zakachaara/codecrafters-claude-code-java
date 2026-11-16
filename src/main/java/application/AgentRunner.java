@@ -19,6 +19,9 @@ public final class AgentRunner {
     private final ToolRegistry toolRegistry;
     private final Skills skills;
 
+    private record ToolResult(String toolCallId, String content) {
+    }
+
     public AgentRunner(ChatClient chatClient, ToolRegistry toolRegistry, Skills skills) {
         this.chatClient = chatClient;
         this.toolRegistry = toolRegistry;
@@ -51,13 +54,32 @@ public final class AgentRunner {
                 return;
             }
 
+            List<ToolResult> toolResults = new ArrayList<>();
             for (var toolCall : assistantMessage.toolCalls().get()) {
                 var function = toolCall.function();
                 String result = toolRegistry.execute(function.name(), function.arguments());
+                toolResults.add(new ToolResult(toolCall.id(), result));
+            }
+
+            String diagnostics;
+            try {
+                diagnostics = toolRegistry.collectNewDiagnostics();
+            } catch (Exception exception) {
+                throw new IllegalStateException("Unable to collect LSP diagnostics", exception);
+            }
+            if (!diagnostics.isEmpty() && !toolResults.isEmpty()) {
+                int lastIndex = toolResults.size() - 1;
+                ToolResult lastResult = toolResults.get(lastIndex);
+                toolResults.set(lastIndex, new ToolResult(
+                        lastResult.toolCallId(),
+                        lastResult.content() + "\n\n" + diagnostics));
+            }
+
+            for (ToolResult toolResult : toolResults) {
                 messages.add(ChatCompletionMessageParam.ofTool(
                         ChatCompletionToolMessageParam.builder()
-                                .content(result)
-                                .toolCallId(toolCall.id())
+                                .content(toolResult.content())
+                                .toolCallId(toolResult.toolCallId())
                                 .build()));
             }
         }

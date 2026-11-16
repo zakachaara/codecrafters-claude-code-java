@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.OptionalInt;
 
 public final class LspDocumentSynchronizer {
     private final LSPClient client;
@@ -65,6 +66,11 @@ public final class LspDocumentSynchronizer {
 
         client.notify(objectMapper.writeValueAsString(notification));
         documentVersions.put(uri, nextVersion);
+    }
+
+    public synchronized OptionalInt versionFor(URI uri) {
+        Integer version = documentVersions.get(uri);
+        return version == null ? OptionalInt.empty() : OptionalInt.of(version);
     }
 
     private void openDocument(Path path, URI uri, String content) throws Exception {

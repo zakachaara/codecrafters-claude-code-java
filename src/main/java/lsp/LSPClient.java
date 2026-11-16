@@ -45,6 +45,10 @@ public final class LSPClient {
         return call("request", payload);
     }
 
+    public String notifications(int after) throws Exception {
+        return call("notifications", "{\"after\":" + after + ",\"timeoutMs\":0}");
+    }
+
     public String mapExtensionToLanguage(String extension) {
         return extensionToLanguage.get(extension);
     }
