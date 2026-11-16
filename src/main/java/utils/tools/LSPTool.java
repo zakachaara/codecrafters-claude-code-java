@@ -110,7 +110,7 @@ public final class LSPTool implements Tool {
         position.put("character", requestCharacter);
 
         String response = lspClient.request(objectMapper.writeValueAsString(request));
-        JsonNode result = objectMapper.readTree(response);
+        JsonNode result = responseBody(response);
         if (result.isMissingNode() || result.isNull()) {
             throw new IllegalStateException("LSP returned no definition");
         }
@@ -158,7 +158,7 @@ public final class LSPTool implements Tool {
         position.put("character", requestCharacter);
         params.put("context", objectMapper.createObjectNode().put("includeDeclaration", true));
         String response = lspClient.request(objectMapper.writeValueAsString(request));
-        JsonNode results = objectMapper.readTree(response);
+        JsonNode results = responseBody(response);
         if (!results.isArray() || results.isEmpty()) {
             return "No references found.";
         }
@@ -197,6 +197,14 @@ public final class LSPTool implements Tool {
             str.append(System.lineSeparator());
         }
         return str.toString();
+    }
+
+    private JsonNode responseBody(String response) throws Exception {
+        JsonNode root = objectMapper.readTree(response);
+        JsonNode wrappedResult = root.get("result");
+        return wrappedResult == null || wrappedResult.isMissingNode()
+                ? root
+                : wrappedResult;
     }
 
     private String requiredString(Map<String, Object> arguments, String name) {
