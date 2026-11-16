@@ -4,7 +4,9 @@ import chat.ChatClient;
 import config.AppConfig;
 import utils.Skills;
 import utils.tools.ToolRegistry;
+import lsp.LSPClient;
 
+import java.util.Optional;
 import java.util.Arrays;
 
 public final class Main {
@@ -24,7 +26,8 @@ public final class Main {
             ChatClient chatClient = new ChatClient(config);
             Skills skills = new Skills();
             SubAgentRunner subAgentRunner = new SubAgentRunner(chatClient);
-            ToolRegistry toolRegistry = new ToolRegistry(skills, subAgentRunner::run);
+            LSPClient lspClient = LSPClient.fromEnvironment();
+            ToolRegistry toolRegistry = new ToolRegistry(skills, subAgentRunner::run, Optional.ofNullable(lspClient));
 
             new AgentRunner(chatClient, toolRegistry, skills).run(prompt);
         } catch (Exception exception) {

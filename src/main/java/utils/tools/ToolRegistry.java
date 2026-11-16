@@ -9,17 +9,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.Optional;
+
+import lsp.LSPClient;
 import utils.Skills;
 
 public final class ToolRegistry {
     private final Map<String, Tool> tools = new LinkedHashMap<>();
 
-    public ToolRegistry(Skills skills, Function<String, String> subAgentRunner) {
+    public ToolRegistry(Skills skills, Function<String, String> subAgentRunner, Optional<LSPClient> lspClient) {
         register(new ReadTool());
         register(new WriteTool());
         register(new BashTool());
         register(new SkillTool(skills, subAgentRunner));
-        register(new LSPTool());
+        register(new LSPTool(lspClient.orElse(null)));
     }
 
     private void register(Tool tool) {

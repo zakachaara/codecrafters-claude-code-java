@@ -1,3 +1,5 @@
+package lsp;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,6 +36,15 @@ public final class LSPClient {
         if (response.statusCode() != 200) throw new IllegalStateException(response.body());
         return response.body();
     }
+
+    public String notify(String payload) throws Exception {
+        return call("notify", payload);
+    }
+    
+    public String request(String payload) throws Exception {
+        return call("request", payload);
+    }
+
     public String mapExtensionToLanguage(String extension) {
         return extensionToLanguage.get(extension);
     }
