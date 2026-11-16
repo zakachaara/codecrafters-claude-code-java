@@ -34,4 +34,7 @@ public final class LSPClient {
         if (response.statusCode() != 200) throw new IllegalStateException(response.body());
         return response.body();
     }
+    public String mapExtensionToLanguage(String extension) {
+        return extensionToLanguage.get(extension);
+    }
 }
