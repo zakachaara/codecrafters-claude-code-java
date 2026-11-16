@@ -1,17 +1,20 @@
 package utils;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Skills {
-    private Map<String , SkillFormat> skill_map = new HashMap<>();
-    private String prompt;
-    private Map<String , String> skill_prompt = new HashMap<>();
+    private final Map<String, SkillFormat> skillMap;
+    private final String prompt;
+    private final Map<String, String> skillPrompts = new LinkedHashMap<>();
 
     public Skills() {
         // load .claude/skills and determine skill paths
@@ -19,7 +22,7 @@ public class Skills {
         List<String> skillsPaths = loadSkillsPathFromFolder(skillsPath);
 
         // loop over all the paths in it and read every Skill.md metadata
-        this.skill_map = readSkills(skillsPaths);
+        this.skillMap = readSkills(skillsPaths);
         // Build the System prompt ;
         this.prompt = buildPrompt();
     }
@@ -27,17 +30,15 @@ public class Skills {
     private List<String> loadSkillsPathFromFolder(Path path) {
         ArrayList<String> skillsPathList = new ArrayList<>();
 
-        File[] files = path.toFile().listFiles();
-
-        if (files == null) {
+        try (var files = Files.list(path)) {
+            files.filter(Files::isDirectory)
+                    .map(directory -> directory.resolve("SKILL.md"))
+                    .filter(Files::exists)
+                    .sorted()
+                    .map(Path::toString)
+                    .forEach(skillsPathList::add);
+        } catch (IOException ignored) {
             return skillsPathList;
-        }
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                Path skillPath = file.toPath().resolve("SKILL.md");
-                skillsPathList.add(skillPath.toString());
-            }
         }
 
         return skillsPathList;
@@ -45,7 +46,7 @@ public class Skills {
 
 
     private Map<String, SkillFormat> readSkills(List<String> paths) {
-        Map<String, SkillFormat> skill_map = new HashMap<>();
+        Map<String, SkillFormat> skills = new LinkedHashMap<>();
 
         for (String filePath : paths) {
             Path path = Paths.get(filePath);
@@ -83,8 +84,8 @@ public class Skills {
                     body.append(line).append("\n");
                 }
 
-                skill_map.put(skill.getName(), skill);
-                skill_prompt.put(
+                skills.put(skill.getName(), skill);
+                skillPrompts.put(
                         "/"+skill.getName(),
                         body.toString()
                 );
@@ -95,7 +96,7 @@ public class Skills {
             }
         }
 
-        return skill_map;
+        return skills;
     }
 
     private String buildPrompt(){
@@ -103,7 +104,7 @@ public class Skills {
                 "You have access to the following skills:\n\n"
         );
 
-        for (SkillFormat skill : skill_map.values()) {
+        for (SkillFormat skill : skillMap.values()) {
             prompt.append(skill).append("\n");
         }
         prompt.append("If a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns.");
@@ -115,21 +116,24 @@ public class Skills {
     }
     private String getSkillPrompt(String command){
         // get the prompt of the command from the hashmap
-        return skill_prompt.get(command);
+        return skillPrompts.get(command);
     }
     public boolean skillExists(String skill){
-        return skill_prompt.containsKey(skill);
+        return skillPrompts.containsKey(skill);
     }
 
     private boolean requiresLevel3Context(String skill) {
         String skillBody = getSkillPrompt(skill);
+        if (skillBody == null) {
+            return false;
+        }
         return skillBody.contains("/scripts")
                 || skillBody.contains("/references")
                 || skillBody.contains("/assets");
     }
     public boolean isSubAgented(String skill) {
-        String context = skill_map.get(skill).getContext();
-        return context.equals("fork");
+        SkillFormat skillFormat = skillMap.get(skill);
+        return skillFormat != null && "fork".equals(skillFormat.getContext());
     }
 
     public String getSkillHeadPrompt(String skill){
@@ -143,10 +147,7 @@ public class Skills {
         return prompt.toString();
     }
 
-    List<String> stacked ;
-    String[] newArgs;
-
-    public void extractStackedSkills(String oldPrompt) {
+    public List<String> extractStackedSkills(String oldPrompt) {
         String[] stack = oldPrompt.trim().split("\\s+");
         List<String> stacked = new ArrayList<>();
         int indexArgs = stack.length;
@@ -159,34 +160,38 @@ public class Skills {
                 break;
             }
         }
-        this.newArgs = Arrays.copyOfRange(stack, indexArgs, stack.length);
-        this.stacked = stacked;
-    }
-
-
-    public List<String> getStackedSkills(String oldPrompt) {
-        if (stacked == null) {
-            this.extractStackedSkills(oldPrompt);
-        }
         return stacked;
     }
 
-    public String subsituteInPrompt(String oldPrompt, String cmd){
+    public List<String> getStackedSkills(String oldPrompt) {
+        return extractStackedSkills(oldPrompt);
+    }
+
+    public String substituteInPrompt(String oldPrompt, String cmd){
         String skillPrompt = this.getSkillPrompt(cmd);
 
         String newPrompt = cmd;
 
         if (skillPrompt != null) {
-            // check for Arguments
-            if (newArgs == null){
-                this.extractStackedSkills(oldPrompt);
+            String[] stack = oldPrompt.trim().split("\\s+");
+            int indexArgs = stack.length;
+            for (int i = 0; i < stack.length; i++) {
+                if (!stack[i].startsWith("/") || !this.skillExists(stack[i])) {
+                    indexArgs = i;
+                    break;
+                }
             }
-            Argument arg = new Argument(cmd , skillPrompt , this.newArgs);
+            String[] arguments = Arrays.copyOfRange(stack, indexArgs, stack.length);
+            Argument arg = new Argument(cmd, skillPrompt, arguments);
 
-            // substitue allArgs ;
             newPrompt = arg.substituteArgs(skillPrompt);
         }
         return newPrompt;
+    }
+
+    @Deprecated
+    public String subsituteInPrompt(String oldPrompt, String cmd) {
+        return substituteInPrompt(oldPrompt, cmd);
     }
 
     public String getSkillToolPrompt(String skillName , String args){
