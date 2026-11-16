@@ -104,7 +104,7 @@ public final class LSPTool implements Tool {
         position.put("character", requestCharacter);
 
         String response = lspClient.request(objectMapper.writeValueAsString(request));
-        JsonNode result = objectMapper.readTree(response).path("result");
+        JsonNode result = objectMapper.readTree(response);
         if (result.isMissingNode() || result.isNull()) {
             throw new IllegalStateException("LSP returned no definition");
         }
