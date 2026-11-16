@@ -7,11 +7,12 @@ import utils.Response.CommandResult;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class BashTool extends ChatTool{
-    private String jsonSchema = """
+public final class BashTool implements Tool {
+    private static final String JSON_SCHEMA = """
                 {
                    "type": "object",
                    "required": ["command"],
@@ -23,51 +24,52 @@ public class BashTool extends ChatTool{
                    }
                  }
                 """;
-    private FunctionDefinition BashFunction ;
-    public BashTool(){
-        try {
-            if (BashFunction != null) {
-                return;
-            }
-            Map<String, Object> schema = mapFields(jsonSchema);
+    private final FunctionDefinition definition;
 
-            FunctionParameters params = buildFunctionParameters(schema);
+    public BashTool() {
+        Map<String, Object> schema = ChatTool.mapFields(JSON_SCHEMA);
+        FunctionParameters params = ChatTool.buildFunctionParameters(schema);
+        this.definition = FunctionDefinition.builder()
+                .name("Bash").description("Execute a shell command")
+                .parameters(params)
+                .build();
+    }
 
-            this.BashFunction = FunctionDefinition.builder()
-                    .name("Bash").description("Execute a shell command")
-                    .parameters(params)
-                    .build();
+    @Override
+    public String name() {
+        return "Bash";
+    }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+    @Override
+    public FunctionDefinition definition() {
+        return definition;
+    }
+
+    @Override
+    public String execute(Map<String, Object> arguments) throws Exception {
+        Object command = arguments.get("command");
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
         }
-    }
 
-    public FunctionDefinition getBashFunction() {
-        return this.BashFunction;
-    }
-
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    Process process ;
-
-    public CommandResult execute(String command) {
+        Process process = new ProcessBuilder("bash", "-c", command.toString()).start();
+        String message;
+        String errorMessage;
         try {
-
-            processBuilder.command("bash", "-c", command);
-            process = processBuilder.start();
+            message = new BufferedReader(new InputStreamReader(
+                    process.getInputStream(), StandardCharsets.UTF_8))
+                    .lines().collect(Collectors.joining("\n"));
+            errorMessage = new BufferedReader(new InputStreamReader(
+                    process.getErrorStream(), StandardCharsets.UTF_8))
+                    .lines().collect(Collectors.joining("\n"));
             int exitCode = process.waitFor();
-            var input = process.getInputStream();
-            var error = process.getErrorStream();
-
-            String message = new BufferedReader(new InputStreamReader(input)).lines().collect(Collectors.joining("\n"));
-            String errorMessage = new BufferedReader(new InputStreamReader(error)).lines().collect(Collectors.joining("\n"));
-
-            return new CommandResult(exitCode, message, errorMessage);
-
-        }catch (IOException | InterruptedException e){
-            e.printStackTrace();
+            CommandResult result = new CommandResult(exitCode, message, errorMessage);
+            return result.getCode() == 0 ? result.getMessage() : result.getError();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw exception;
+        } finally {
+            process.destroy();
         }
-        return new CommandResult(0, "", "");
     }
 }

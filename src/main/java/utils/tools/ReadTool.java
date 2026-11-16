@@ -3,10 +3,12 @@ package utils.tools;
 import com.openai.models.FunctionDefinition;
 import com.openai.models.FunctionParameters;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
-public class ReadTool extends ChatTool{
-    private String jsonSchema = """
+public final class ReadTool implements Tool {
+    private static final String JSON_SCHEMA = """
                 {
                   "type": "object",
                   "properties": {
@@ -18,30 +20,33 @@ public class ReadTool extends ChatTool{
                   "required": ["file_path"]
                 }
                 """;
-    private FunctionDefinition ReadFunction ;
-    public ReadTool(){
-        try {
-            if (ReadFunction != null) {
-                return;
-            }
-            Map<String, Object> schema = mapFields(jsonSchema);
+    private final FunctionDefinition definition;
 
-            FunctionParameters params = buildFunctionParameters(schema);
+    public ReadTool() {
+        Map<String, Object> schema = ChatTool.mapFields(JSON_SCHEMA);
+        FunctionParameters params = ChatTool.buildFunctionParameters(schema);
+        this.definition = FunctionDefinition.builder()
+                .name("Read").description("Read and return the content of a file")
+                .parameters(params)
+                .build();
+    }
 
-            this.ReadFunction = FunctionDefinition.builder()
-                    .name("Read").description("Read and return the content of a file")
-                    .parameters(params)
-                    .build();
+    @Override
+    public String name() {
+        return "Read";
+    }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+    @Override
+    public FunctionDefinition definition() {
+        return definition;
+    }
+
+    @Override
+    public String execute(Map<String, Object> arguments) throws Exception {
+        Object filePath = arguments.get("file_path");
+        if (filePath == null) {
+            throw new IllegalArgumentException("file_path is required");
         }
+        return Files.readString(Path.of(filePath.toString()));
     }
-
-    public FunctionDefinition getReadFunction() {
-        return this.ReadFunction;
-    }
-
-
 }

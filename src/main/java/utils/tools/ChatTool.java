@@ -9,12 +9,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ChatTool {
-    public static Map<String , Object> mapFields(String jsonSchema) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-
-        Map<String, Object> schema =
-                mapper.readValue(jsonSchema, new TypeReference<Map<String, Object>>() {});
-        return schema;
+    public static Map<String , Object> mapFields(String jsonSchema) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(jsonSchema, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("Invalid tool schema", exception);
+        }
     }
 
     public static FunctionParameters buildFunctionParameters(Map<String, Object> schema) {
